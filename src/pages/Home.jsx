@@ -3,7 +3,7 @@ import { DataStore } from '../datastore.js'
 import { formatDateShort } from '../utils.js'
 import { useDocumentMeta } from '../useDocumentMeta.js'
 import { useTheme } from '../theme.jsx'
-import { SearchIcon, EyeIcon, ArrowLeftIcon } from '../icons.jsx'
+import { EyeIcon } from '../icons.jsx'
 
 export default function Home({ navigate, initialQuery }) {
   const settings = DataStore.Settings.get()
@@ -15,7 +15,7 @@ export default function Home({ navigate, initialQuery }) {
   const [tags, setTags] = useState([])
   const [catCounts, setCatCounts] = useState([])
 
-  const [query, setQuery] = useState(initialQuery?.get('q') || initialQuery?.get('tag') || '')
+  const [query, setQuery] = useState(initialQuery?.get('q') || '')
   const [activeCategory, setActiveCategory] = useState('')
   const [activeTag, setActiveTag] = useState(initialQuery?.get('tag') || '')
 
@@ -53,25 +53,21 @@ export default function Home({ navigate, initialQuery }) {
 
   return (
     <div className="home">
-      <section className="hero">
+      <section className="hero hero-compact">
         <h1>欢迎来到 {siteTitle}</h1>
         <p>{settings.subtitle || '收录技术与生活随笔'}</p>
-        <div className="search-box">
-          <div className="search-input-wrap">
-            <SearchIcon size={18} className="search-icon" />
-            <input
-              type="search"
-              className="input search-input"
-              placeholder="搜索文章标题、内容、标签…"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-            />
-          </div>
-          {isFiltered && (
-            <button className="btn btn-sm" onClick={clearFilters}>清除筛选</button>
-          )}
-        </div>
       </section>
+
+      {(isFiltered) && (
+        <div className="filter-status-bar">
+          <span className="muted small">
+            {activeTag && <span className="filter-tag">标签: #{activeTag}</span>}
+            {activeCategory && <span className="filter-tag">分类: {activeCategory}</span>}
+            {query && <span className="filter-tag">关键词: {query}</span>}
+          </span>
+          <button className="btn btn-sm" onClick={clearFilters}>清除筛选</button>
+        </div>
+      )}
 
       <div className="home-layout">
         <aside className="home-sidebar">
