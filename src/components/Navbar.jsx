@@ -40,6 +40,11 @@ export default function Navbar({ siteTitle, authed, navigate, currentPath }) {
   const isDark = theme === THEMES.DARK
   const [menuOpen, setMenuOpen] = useState(false)
 
+  // 读取 settings 获取 logo (logoData 优先, 否则 logo URL)
+  const settings = DataStore.Settings.get()
+  const logoSrc = settings?.logoData || settings?.logo || ''
+  const displaySiteTitle = (settings?.blogName && settings.blogName.trim()) || siteTitle || '语客'
+
   // ---- 搜索状态 ----
   const [searchOpen, setSearchOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
@@ -143,7 +148,18 @@ export default function Navbar({ siteTitle, authed, navigate, currentPath }) {
     <header className="navbar">
       <div className="container navbar-inner">
         <a href="#/" className="brand" onClick={(e) => { e.preventDefault(); navigate('/') }}>
-          <span className="brand-text">{siteTitle}</span>
+          {logoSrc ? (
+            <img
+              src={logoSrc}
+              alt=""
+              className="brand-logo"
+              width={32}
+              height={32}
+              loading="eager"
+              onError={(e) => { e.currentTarget.style.display = 'none' }}
+            />
+          ) : null}
+          <span className="brand-text">{displaySiteTitle}</span>
         </a>
 
         <div className="nav-right-group">

@@ -263,6 +263,21 @@ export const SaveIcon = makeIcon(
   </>
 )
 
+export const ImageIcon = makeIcon(
+  <>
+    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+    <circle cx="8.5" cy="8.5" r="1.5" />
+    <polyline points="21 15 16 10 5 21" />
+  </>
+)
+
+export const PaintIcon = makeIcon(
+  <>
+    <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.83 0 1.5-.67 1.5-1.5 0-.39-.15-.74-.39-1.01-.23-.26-.38-.61-.38-.99 0-.83.67-1.5 1.5-1.5H16c2.76 0 5-2.24 5-5 0-4.42-4.03-8-9-8z" />
+    <path d="M5.5 12A1.5 1.5 0 1 1 7 13.5 1.5 1.5 0 0 1 5.5 12z" />
+  </>
+)
+
 export const CloudIcon = makeIcon(
   <path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z" />
 )
@@ -325,6 +340,8 @@ const ICON_MAP = {
   menu: MenuIcon,
   pen: PenIcon,
   save: SaveIcon,
+  image: ImageIcon,
+  paint: PaintIcon,
   cloud: CloudIcon,
   refresh: RefreshIcon,
   'alert-triangle': AlertTriangleIcon,

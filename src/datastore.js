@@ -22,9 +22,14 @@ const DEFAULT_SETTINGS = {
   blogName: '我的博客',
   subtitle: '收录技术与生活随笔',
   logo: '',
+  logoData: '',
   footer: '纯前端博客 · localStorage 本地存储 · React + Vite',
   commentEnabled: true,
-  commentNeedReview: true
+  commentNeedReview: true,
+  themeColors: {
+    primary: '#3B82F6',
+    accent: '#6366F1'
+  }
 }
 
 // ==================== 底层读写工具 ====================
@@ -564,7 +569,15 @@ const Tags = {
 // ==================== 系统设置 (Settings) ====================
 const Settings = {
   get() {
-    return { ...DEFAULT_SETTINGS, ...readJSON(KEYS.SETTINGS, {}) }
+    const stored = readJSON(KEYS.SETTINGS, {}) || {}
+    return {
+      ...DEFAULT_SETTINGS,
+      ...stored,
+      themeColors: {
+        ...DEFAULT_SETTINGS.themeColors,
+        ...(stored.themeColors || {})
+      }
+    }
   },
 
   update(patch) {
