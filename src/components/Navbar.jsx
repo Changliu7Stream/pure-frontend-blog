@@ -143,9 +143,6 @@ export default function Navbar({ siteTitle, authed, navigate, currentPath }) {
     <header className="navbar">
       <div className="container navbar-inner">
         <a href="#/" className="brand" onClick={(e) => { e.preventDefault(); navigate('/') }}>
-          <span className="brand-logo">
-            <HomeIcon size={22} />
-          </span>
           <span className="brand-text">{siteTitle}</span>
         </a>
 
