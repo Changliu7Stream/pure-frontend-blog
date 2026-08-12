@@ -1,12 +1,15 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import { Editor, Toolbar } from '@wangeditor/editor-for-react'
 import { marked } from 'marked'
-import { createPost, updatePost, getPostById, getAllCategories } from '../db.js'
+import { DataStore } from '../datastore.js'
 import { excerptFromContent } from '../utils.js'
 import { useDocumentMeta } from '../useDocumentMeta.js'
+import { ArrowLeftIcon, SaveIcon, ClockIcon } from '../icons.jsx'
 
-// WangEditor 样式 (按需引入，避免 vite 构建时引入 css 报错不同包)
 import '@wangeditor/editor/dist/css/style.css'
+
+const DRAFT_KEY = 'post_editor_draft'
+const AUTOSAVE_INTERVAL = 5000 // 5 秒自动保存草稿
 
 export default function PostEditor({ navigate, mode, postId }) {
   useDocumentMeta({ title: mode === 'edit' ? '编辑文章' : '写新文章', siteTitle: '管理后台' })
@@ -18,25 +21,25 @@ export default function PostEditor({ navigate, mode, postId }) {
   const [categories, setCategories] = useState(['未分类'])
   const [excerpt, setExcerpt] = useState('')
   const [autoExcerpt, setAutoExcerpt] = useState(true)
-  const [contentFormat, setContentFormat] = useState('html') // 'html' | 'markdown'
-  const [published, setPublished] = useState(true)
+  const [contentFormat, setContentFormat] = useState('html')
+  const [status, setStatus] = useState('published') // published | draft | scheduled
+  const [scheduledAt, setScheduledAt] = useState('')
 
-  // WangEditor html 正文
   const [htmlContent, setHtmlContent] = useState('')
   const [editor, setEditor] = useState(null)
-
-  // Markdown 正文
   const [mdContent, setMdContent] = useState('')
 
   const [loading, setLoading] = useState(mode === 'edit')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [autoSavedAt, setAutoSavedAt] = useState(null)
+  const [draftRestored, setDraftRestored] = useState(false)
 
-  // 编辑器配置
+  const draftTimer = useRef(null)
+
   const editorConfig = {
     placeholder: '请输入正文内容,支持直接粘贴图片…',
     MENU_CONF: {
-      // 粘贴图片转换为 base64 内联 (纯前端无服务器上传)
       uploadImage: {
         customUpload(file, insertFn) {
           const reader = new FileReader()
@@ -54,59 +57,99 @@ export default function PostEditor({ navigate, mode, postId }) {
     }
   }
 
+  // 加载分类列表
   useEffect(() => {
-    setCategories(getAllCategories())
+    setCategories(DataStore.Categories.getAll())
   }, [])
 
+  // 编辑模式: 加载已有文章
   useEffect(() => {
-    if (mode !== 'edit') return
-    let active = true
+    if (mode !== 'edit') {
+      // 新建模式: 检查是否有未恢复的草稿
+      const draft = DataStore.Drafts.get(DRAFT_KEY)
+      if (draft && !draftRestored) {
+        if (window.confirm('检测到未保存的草稿,是否恢复?')) {
+          setTitle(draft.title || '')
+          setTags(draft.tags || '')
+          setCategory(draft.category || '未分类')
+          setExcerpt(draft.excerpt || '')
+          setAutoExcerpt(!draft.excerpt)
+          setContentFormat(draft.contentFormat || 'html')
+          setStatus(draft.status || 'published')
+          setScheduledAt(draft.scheduledAt ? toDateTimeLocal(draft.scheduledAt) : '')
+          if (draft.contentFormat === 'html') setHtmlContent(draft.content || '')
+          else setMdContent(draft.content || '')
+        } else {
+          DataStore.Drafts.delete(DRAFT_KEY)
+        }
+        setDraftRestored(true)
+      }
+      return
+    }
     setLoading(true)
-    getPostById(postId)
-      .then((p) => {
-        if (!active) return
-        if (!p) { setError('文章不存在'); return }
-        setTitle(p.title)
-        setTags((p.tags || []).join(', '))
-        setCategory(p.category || '未分类')
-        setExcerpt(p.excerpt || '')
-        setAutoExcerpt(!p.excerpt)
-        setPublished(p.published !== false)
-        const fmt = p.contentFormat === 'html' ? 'html' : 'markdown'
-        setContentFormat(fmt)
-        if (fmt === 'html') setHtmlContent(p.content || '')
-        else setMdContent(p.content || '')
-      })
-      .catch((err) => active && setError(err.message || '加载失败'))
-      .finally(() => active && setLoading(false))
-    return () => { active = false }
+    const p = DataStore.Posts.getById(postId)
+    if (!p) {
+      setError('文章不存在')
+      setLoading(false)
+      return
+    }
+    setTitle(p.title)
+    setTags((p.tags || []).join(', '))
+    setCategory(p.category || '未分类')
+    setExcerpt(p.excerpt || '')
+    setAutoExcerpt(!p.excerpt)
+    setStatus(p.status || 'published')
+    setScheduledAt(p.scheduledAt ? toDateTimeLocal(p.scheduledAt) : '')
+    const fmt = p.contentFormat === 'html' ? 'html' : 'markdown'
+    setContentFormat(fmt)
+    if (fmt === 'html') setHtmlContent(p.content || '')
+    else setMdContent(p.content || '')
+    setLoading(false)
   }, [mode, postId])
 
   // 销毁编辑器
   useEffect(() => {
-    return () => { if (editor == null) return; editor.destroy() }
+    return () => { if (editor) editor.destroy() }
   }, [editor])
 
-  // 切换编辑器模式时先清空对侧状态
+  // 切换编辑器模式时同步内容
   useEffect(() => {
     if (contentFormat === 'html' && editor) {
       editor.setHtml(htmlContent || '')
     }
   }, [contentFormat])
 
+  // 自动保存草稿
+  const saveDraft = useCallback(() => {
+    if (saving || loading) return
+    const rawContent = contentFormat === 'html' ? htmlContent : mdContent
+    if (!title.trim() && !rawContent) return
+    DataStore.Drafts.save(DRAFT_KEY, {
+      title, tags, category, excerpt, autoExcerpt,
+      contentFormat, status, scheduledAt: scheduledAt ? new Date(scheduledAt).getTime() : null,
+      content: rawContent,
+      mode, postId
+    })
+    setAutoSavedAt(Date.now())
+  }, [title, tags, category, excerpt, autoExcerpt, contentFormat, status, scheduledAt, htmlContent, mdContent, mode, postId, saving, loading])
+
+  useEffect(() => {
+    if (draftTimer.current) clearInterval(draftTimer.current)
+    draftTimer.current = setInterval(saveDraft, AUTOSAVE_INTERVAL)
+    return () => { if (draftTimer.current) clearInterval(draftTimer.current) }
+  }, [saveDraft])
+
   const addNewCategory = () => {
     const n = newCategory.trim()
     if (!n) return
-    if (!categories.includes(n)) {
-      const list = [...categories, n]
-      setCategories(list)
-      // 持久化
-      try {
-        localStorage.setItem('blog_categories', JSON.stringify(list))
-      } catch { /* noop */ }
+    try {
+      DataStore.Categories.add(n)
+      setCategories(DataStore.Categories.getAll())
+      setCategory(n)
+      setNewCategory('')
+    } catch (err) {
+      setError(err.message)
     }
-    setCategory(n)
-    setNewCategory('')
   }
 
   const onSubmit = async (e) => {
@@ -120,6 +163,19 @@ export default function PostEditor({ navigate, mode, postId }) {
     }
     const tagArr = tags.split(/[,，]/).map((t) => t.trim()).filter(Boolean)
     const finalExcerpt = autoExcerpt ? excerptFromContent(rawContent) : excerpt.trim()
+
+    // 定时发布验证
+    let finalStatus = status
+    let finalScheduledAt = null
+    if (status === 'scheduled') {
+      if (!scheduledAt) { setError('请选择定时发布时间'); return }
+      finalScheduledAt = new Date(scheduledAt).getTime()
+      if (finalScheduledAt <= Date.now()) {
+        setError('定时发布时间必须晚于当前时间')
+        return
+      }
+    }
+
     setSaving(true)
     try {
       const payload = {
@@ -129,14 +185,16 @@ export default function PostEditor({ navigate, mode, postId }) {
         excerpt: finalExcerpt,
         tags: tagArr,
         category,
-        published
+        status: finalStatus,
+        scheduledAt: finalScheduledAt
       }
       if (mode === 'edit') {
-        await updatePost(postId, payload)
+        DataStore.Posts.update(postId, payload)
       } else {
-        await createPost(payload)
+        DataStore.Posts.create(payload)
+        DataStore.Drafts.delete(DRAFT_KEY) // 发布后清除草稿
       }
-      navigate('/admin')
+      navigate('/admin/posts')
     } catch (err) {
       setError(err.message || '保存失败')
     } finally {
@@ -152,7 +210,16 @@ export default function PostEditor({ navigate, mode, postId }) {
     <div className="post-editor">
       <div className="editor-header">
         <h2>{mode === 'edit' ? '编辑文章' : '写新文章'}</h2>
-        <button className="btn btn-link" onClick={() => navigate('/admin')}>← 返回后台</button>
+        <div className="editor-header-right">
+          {autoSavedAt && (
+            <span className="autosave-hint">
+              <SaveIcon size={13} /> 草稿已自动保存 {formatTime(autoSavedAt)}
+            </span>
+          )}
+          <button className="btn btn-link" onClick={() => navigate('/admin/posts')}>
+            <ArrowLeftIcon size={15} /> 返回列表
+          </button>
+        </div>
       </div>
 
       <form onSubmit={onSubmit} className="editor-form">
@@ -185,13 +252,9 @@ export default function PostEditor({ navigate, mode, postId }) {
                 placeholder="新建分类…"
                 value={newCategory}
                 onChange={(e) => setNewCategory(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addNewCategory() } }}
               />
-              <button
-                type="button"
-                className="btn btn-sm"
-                onClick={addNewCategory}
-                disabled={!newCategory.trim()}
-              >
+              <button type="button" className="btn btn-sm" onClick={addNewCategory} disabled={!newCategory.trim()}>
                 添加
               </button>
             </div>
@@ -213,18 +276,10 @@ export default function PostEditor({ navigate, mode, postId }) {
           <label className="form-label">
             编辑模式
             <div className="segmented">
-              <button
-                type="button"
-                className={`seg-btn ${contentFormat === 'html' ? 'active' : ''}`}
-                onClick={() => setContentFormat('html')}
-              >
+              <button type="button" className={`seg-btn ${contentFormat === 'html' ? 'active' : ''}`} onClick={() => setContentFormat('html')}>
                 富文本 (HTML)
               </button>
-              <button
-                type="button"
-                className={`seg-btn ${contentFormat === 'markdown' ? 'active' : ''}`}
-                onClick={() => setContentFormat('markdown')}
-              >
+              <button type="button" className={`seg-btn ${contentFormat === 'markdown' ? 'active' : ''}`} onClick={() => setContentFormat('markdown')}>
                 Markdown
               </button>
             </div>
@@ -233,31 +288,35 @@ export default function PostEditor({ navigate, mode, postId }) {
           <label className="form-label">
             发布状态
             <div className="segmented">
-              <button
-                type="button"
-                className={`seg-btn ${published ? 'active' : ''}`}
-                onClick={() => setPublished(true)}
-              >
+              <button type="button" className={`seg-btn ${status === 'published' ? 'active' : ''}`} onClick={() => setStatus('published')}>
                 已发布
               </button>
-              <button
-                type="button"
-                className={`seg-btn ${!published ? 'active' : ''}`}
-                onClick={() => setPublished(false)}
-              >
+              <button type="button" className={`seg-btn ${status === 'draft' ? 'active' : ''}`} onClick={() => setStatus('draft')}>
                 草稿
+              </button>
+              <button type="button" className={`seg-btn ${status === 'scheduled' ? 'active' : ''}`} onClick={() => setStatus('scheduled')}>
+                <ClockIcon size={13} /> 定时
               </button>
             </div>
           </label>
         </div>
 
+        {status === 'scheduled' && (
+          <label className="form-label">
+            定时发布时间
+            <input
+              type="datetime-local"
+              className="input"
+              value={scheduledAt}
+              onChange={(e) => setScheduledAt(e.target.value)}
+              required
+            />
+          </label>
+        )}
+
         <div className="excerpt-row">
           <label className="form-checkbox">
-            <input
-              type="checkbox"
-              checked={autoExcerpt}
-              onChange={(e) => setAutoExcerpt(e.target.checked)}
-            />
+            <input type="checkbox" checked={autoExcerpt} onChange={(e) => setAutoExcerpt(e.target.checked)} />
             自动生成摘要
           </label>
           {!autoExcerpt && (
@@ -274,7 +333,6 @@ export default function PostEditor({ navigate, mode, postId }) {
           )}
         </div>
 
-        {/* 富文本编辑器 */}
         {contentFormat === 'html' && (
           <div className="richtext-wrap">
             <div className="pane-label">正文 (富文本 · 支持直接粘贴图片)</div>
@@ -297,7 +355,6 @@ export default function PostEditor({ navigate, mode, postId }) {
           </div>
         )}
 
-        {/* Markdown 编辑器 */}
         {contentFormat === 'markdown' && (
           <div className="editor-split">
             <div className="editor-pane">
@@ -323,18 +380,27 @@ export default function PostEditor({ navigate, mode, postId }) {
 
         <div className="editor-actions">
           <button type="submit" className="btn btn-primary" disabled={saving}>
-            {saving ? '保存中…' : mode === 'edit' ? '保存修改' : '发布文章'}
+            <SaveIcon size={15} /> {saving ? '保存中…' : mode === 'edit' ? '保存修改' : '发布文章'}
           </button>
-          <button
-            type="button"
-            className="btn"
-            onClick={() => navigate('/admin')}
-            disabled={saving}
-          >
+          <button type="button" className="btn" onClick={() => navigate('/admin/posts')} disabled={saving}>
             取消
           </button>
         </div>
       </form>
     </div>
   )
+}
+
+// 工具: 时间戳转 datetime-local 输入值
+function toDateTimeLocal(ts) {
+  const d = new Date(ts)
+  const pad = (n) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
+// 工具: 格式化自动保存时间
+function formatTime(ts) {
+  const d = new Date(ts)
+  const pad = (n) => String(n).padStart(2, '0')
+  return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
 }

@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
-import { getAllPosts, groupPostsByYearMonth } from '../db.js'
+import { DataStore } from '../datastore.js'
 import { formatDateShort } from '../utils.js'
 import { useDocumentMeta } from '../useDocumentMeta.js'
 
 export default function Archive({ navigate }) {
-  const siteTitle = import.meta.env.VITE_SITE_TITLE || '我的博客'
+  const settings = DataStore.Settings.get()
+  const siteTitle = settings.blogName || '我的博客'
   useDocumentMeta({
     title: '文章归档',
     description: `${siteTitle} - 按年月归档的全部文章列表。`,
@@ -12,31 +13,21 @@ export default function Archive({ navigate }) {
   })
 
   const [posts, setPosts] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
 
   useEffect(() => {
-    let active = true
-    getAllPosts()
-      .then((list) => active && setPosts(list))
-      .catch((err) => active && setError(err.message || '加载失败'))
-      .finally(() => active && setLoading(false))
-    return () => { active = false }
+    setPosts(DataStore.Posts.getAll())
   }, [])
 
-  const { groups, years } = useMemo(() => groupPostsByYearMonth(posts), [posts])
+  const { groups, years } = useMemo(() => DataStore.Posts.groupByYearMonth(posts), [posts])
 
   return (
     <div className="archive-page">
       <header className="archive-header">
         <h1>文章归档</h1>
-        <p className="muted">共 {posts.length} 篇文章，按年月倒序展示。</p>
+        <p className="muted">共 {posts.length} 篇文章,按年月倒序展示。</p>
       </header>
 
-      {loading && <p className="muted">加载中…</p>}
-      {error && <div className="alert alert-error">{error}</div>}
-
-      {!loading && posts.length === 0 && (
+      {posts.length === 0 && (
         <div className="empty-state">
           <p>暂无文章。</p>
         </div>

@@ -1,51 +1,35 @@
 import { useEffect, useMemo, useState } from 'react'
-import {
-  getAllPosts,
-  getAllTags,
-  getCategoryCounts,
-  searchPosts,
-  filterPostsByCategory,
-  filterPostsByTag
-} from '../db.js'
+import { DataStore } from '../datastore.js'
 import { formatDateShort } from '../utils.js'
 import { useDocumentMeta } from '../useDocumentMeta.js'
 import { useTheme } from '../theme.jsx'
+import { SearchIcon, EyeIcon, ArrowLeftIcon } from '../icons.jsx'
 
-export default function Home({ navigate }) {
-  const siteTitle = import.meta.env.VITE_SITE_TITLE || '我的博客'
-  useDocumentMeta({ title: '', description: `${siteTitle} - 纯前端博客,收录技术与生活随笔。`, siteTitle })
-  useTheme() // 确保 Provider 挂载时触发首次应用
+export default function Home({ navigate, initialQuery }) {
+  const settings = DataStore.Settings.get()
+  const siteTitle = settings.blogName || '我的博客'
+  useDocumentMeta({ title: '', description: `${siteTitle} - ${settings.subtitle || ''}`, siteTitle })
+  useTheme()
 
   const [posts, setPosts] = useState([])
   const [tags, setTags] = useState([])
   const [catCounts, setCatCounts] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
 
-  // 筛选状态
-  const [query, setQuery] = useState('')
+  const [query, setQuery] = useState(initialQuery?.get('q') || initialQuery?.get('tag') || '')
   const [activeCategory, setActiveCategory] = useState('')
-  const [activeTag, setActiveTag] = useState('')
+  const [activeTag, setActiveTag] = useState(initialQuery?.get('tag') || '')
 
   useEffect(() => {
-    let active = true
-    Promise.all([getAllPosts(), getAllTags(), getCategoryCounts()])
-      .then(([p, t, c]) => {
-        if (!active) return
-        setPosts(p)
-        setTags(t)
-        setCatCounts(c)
-      })
-      .catch((err) => active && setError(err.message || '加载失败'))
-      .finally(() => active && setLoading(false))
-    return () => { active = false }
+    setPosts(DataStore.Posts.getAll())
+    setTags(DataStore.Tags.getAll())
+    setCatCounts(DataStore.Categories.getWithCounts())
   }, [])
 
   const filtered = useMemo(() => {
     let list = posts
-    list = filterPostsByCategory(list, activeCategory)
-    list = filterPostsByTag(list, activeTag)
-    list = searchPosts(list, query)
+    if (activeTag) list = DataStore.Posts.filterByTag(list, activeTag)
+    if (activeCategory) list = DataStore.Posts.filterByCategory(list, activeCategory)
+    if (query) list = DataStore.Posts.search(list, query)
     return list
   }, [posts, query, activeCategory, activeTag])
 
@@ -71,23 +55,23 @@ export default function Home({ navigate }) {
     <div className="home">
       <section className="hero">
         <h1>欢迎来到 {siteTitle}</h1>
-        <p>收录技术与生活随笔。内容均存储于浏览器本地数据库。</p>
+        <p>{settings.subtitle || '收录技术与生活随笔'}</p>
         <div className="search-box">
-          <input
-            type="search"
-            className="input search-input"
-            placeholder="搜索文章标题、内容、标签…"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-          />
+          <div className="search-input-wrap">
+            <SearchIcon size={18} className="search-icon" />
+            <input
+              type="search"
+              className="input search-input"
+              placeholder="搜索文章标题、内容、标签…"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
+          </div>
           {isFiltered && (
             <button className="btn btn-sm" onClick={clearFilters}>清除筛选</button>
           )}
         </div>
       </section>
-
-      {loading && <p className="muted">加载中…</p>}
-      {error && <p className="alert alert-error">{error}</p>}
 
       <div className="home-layout">
         <aside className="home-sidebar">
@@ -141,7 +125,7 @@ export default function Home({ navigate }) {
             </h2>
           </div>
 
-          {!loading && !error && filtered.length === 0 && (
+          {filtered.length === 0 && (
             <div className="empty-state">
               <p>{isFiltered ? '没有符合条件的文章。' : '暂无文章。'}</p>
               {isFiltered && (
@@ -161,18 +145,14 @@ export default function Home({ navigate }) {
                 onClick={() => navigate(`/post/${encodeURIComponent(post.slug)}`)}
               >
                 <div className="post-card-top">
-                  {post.category && (
-                    <span className="cat-badge">{post.category}</span>
-                  )}
+                  {post.category && <span className="cat-badge">{post.category}</span>}
                   <span className="post-date">{formatDateShort(post.createdAt)}</span>
                 </div>
                 <h3 className="post-card-title">{post.title}</h3>
-                <p className="post-card-excerpt">
-                  {post.excerpt || '（无摘要）'}
-                </p>
+                <p className="post-card-excerpt">{post.excerpt || '（无摘要）'}</p>
                 <div className="post-card-meta">
-                  <span>
-                    👁 {Number(post.views || 0)}
+                  <span className="views-count">
+                    <EyeIcon size={14} /> {Number(post.views || 0)}
                   </span>
                   {post.tags?.length > 0 && (
                     <span className="tags">
