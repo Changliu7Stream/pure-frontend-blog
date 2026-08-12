@@ -725,9 +725,51 @@ function seedDefaultData() {
   }
 }
 
+const DEFAULT_PAGE_CONTENT = `<h2>关于本博客</h2>
+<p>这是一个使用纯前端技术构建的博客系统，数据存储在浏览器本地 (localStorage)，无需后端服务器即可运行。</p>
+<h3>技术栈</h3>
+<ul>
+  <li>React + Vite 构建单页面应用</li>
+  <li>WangEditor 富文本编辑器</li>
+  <li>DOMPurify 防 XSS 攻击</li>
+  <li>WebDAV 云端备份支持</li>
+</ul>
+<h3>功能特性</h3>
+<ul>
+  <li>文章发布、草稿、定时发布</li>
+  <li>分类与标签管理</li>
+  <li>评论审核与回复</li>
+  <li>暗黑模式</li>
+  <li>响应式布局，适配移动端</li>
+  <li>SEO 优化 (动态 title / meta)</li>
+</ul>
+<h3>数据说明</h3>
+<p>所有博客数据（文章、页面、评论、分类、设置）均存储在浏览器的 localStorage 中。建议定期使用「备份恢复」功能导出数据到本地或 WebDAV 云端，避免清除浏览器缓存时丢失数据。</p>
+<blockquote><p>这个页面是系统自动创建的示例页面，你可以在管理后台的「页面管理」中编辑或删除它。</p></blockquote>`
+
+function seedDefaultPages() {
+  const existing = readJSON(KEYS.PAGES, null)
+  if (existing && Array.isArray(existing) && existing.length > 0) return
+
+  const now = Date.now()
+  const defaultPage = {
+    id: now + 1,
+    title: '关于博客',
+    slug: 'about',
+    content: DEFAULT_PAGE_CONTENT,
+    contentFormat: 'html',
+    published: true,
+    createdAt: now,
+    updatedAt: now,
+    isDefault: true
+  }
+  writeJSON(KEYS.PAGES, [defaultPage])
+}
+
 // 启动时初始化默认数据 + 检查定时发布
 if (typeof window !== 'undefined') {
   seedDefaultData()
+  seedDefaultPages()
   DataStore.Posts.checkScheduled()
   setInterval(() => DataStore.Posts.checkScheduled(), 60000)
 }
