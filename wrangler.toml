@@ -1,0 +1,13 @@
+# Cloudflare Pages 兼容配置 (用于 Wrangler CLI 本地预览 / Pages Functions)
+# 大多数用户通过 Cloudflare Dashboard 一键部署时,只需要 public/_redirects 即可,
+# 本文件是为那些使用 wrangler 命令行或 Pages Functions 做高级扩展的场景准备的。
+
+name = "pure-frontend-blog"
+compatibility_date = "2024-04-01"
+pages_build_output_dir = "dist"
+
+[vars]
+# 注意:Cloudflare Pages 的环境变量需在后台面板添加,此处仅作说明文档占位。
+# 构建时注入到前端的变量必须以 VITE_ 开头:
+# VITE_ADMIN_PASSWORD - 必填,管理员登录密码
+# VITE_SITE_TITLE     - 可选,站点名称

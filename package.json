@@ -1,0 +1,22 @@
+{
+  "name": "pure-frontend-blog",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "纯前端博客系统，使用 IndexedDB 存储，仅管理员可发布文章，通过环境变量配置管理员密码",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "dexie": "^4.0.8",
+    "marked": "^14.1.2",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.1",
+    "vite": "^5.4.6"
+  }
+}
