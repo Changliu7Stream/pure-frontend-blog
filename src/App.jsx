@@ -3,6 +3,7 @@ import { useHashRoute, matchPath } from './router'
 import { isAuthenticated } from './auth'
 import { DataStore } from './datastore.js'
 import { ThemeProvider } from './theme.jsx'
+import { ToastProvider } from './components/Toast.jsx'
 import Navbar from './components/Navbar.jsx'
 import Home from './pages/Home.jsx'
 import PostDetail from './pages/PostDetail.jsx'
@@ -128,7 +129,9 @@ function InnerApp() {
 export default function App() {
   return (
     <ThemeProvider>
-      <InnerApp />
+      <ToastProvider>
+        <InnerApp />
+      </ToastProvider>
     </ThemeProvider>
   )
 }

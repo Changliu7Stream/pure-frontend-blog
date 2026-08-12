@@ -263,6 +263,35 @@ export const SaveIcon = makeIcon(
   </>
 )
 
+export const CloudIcon = makeIcon(
+  <path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z" />
+)
+
+export const RefreshIcon = makeIcon(
+  <>
+    <polyline points="23 4 23 10 17 10" />
+    <polyline points="1 20 1 14 7 14" />
+    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+  </>
+)
+
+export const AlertTriangleIcon = makeIcon(
+  <>
+    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+    <line x1="12" y1="9" x2="12" y2="13" />
+    <line x1="12" y1="17" x2="12.01" y2="17" />
+  </>
+)
+
+export const ServerIcon = makeIcon(
+  <>
+    <rect x="2" y="2" width="20" height="8" rx="2" ry="2" />
+    <rect x="2" y="14" width="20" height="8" rx="2" ry="2" />
+    <line x1="6" y1="6" x2="6.01" y2="6" />
+    <line x1="6" y1="18" x2="6.01" y2="18" />
+  </>
+)
+
 /** 统一图标组件: 通过 name 属性选择图标 */
 const ICON_MAP = {
   home: HomeIcon,
@@ -295,7 +324,11 @@ const ICON_MAP = {
   globe: GlobeIcon,
   menu: MenuIcon,
   pen: PenIcon,
-  save: SaveIcon
+  save: SaveIcon,
+  cloud: CloudIcon,
+  refresh: RefreshIcon,
+  'alert-triangle': AlertTriangleIcon,
+  server: ServerIcon
 }
 
 export function Icon({ name, ...rest }) {
