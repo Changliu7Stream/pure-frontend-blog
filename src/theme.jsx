@@ -1,5 +1,5 @@
 // 主题系统: 亮色 / 暗黑模式切换,偏好持久化到 localStorage
-import { createContext, useContext, useEffect, useState, useCallback } from 'react'
+import { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react'
 
 const THEME_KEY = 'blog_theme_preference'
 export const THEMES = {
@@ -47,12 +47,10 @@ const ThemeContext = createContext({
 
 export function ThemeProvider({ children }) {
   const [theme, setThemeState] = useState(getInitialTheme)
+  const isManualRef = useRef(false)
 
   useEffect(() => {
     applyThemeToDocument(theme)
-    try {
-      localStorage.setItem(THEME_KEY, theme)
-    } catch { /* noop */ }
   }, [theme])
 
   // 监听系统主题变化 (只有用户未手动设置过时跟随系统)
@@ -60,8 +58,9 @@ export function ThemeProvider({ children }) {
     if (typeof window === 'undefined' || !window.matchMedia) return
     const mql = window.matchMedia('(prefers-color-scheme: dark)')
     const onChange = (e) => {
+      // 用户有明确偏好则不跟随
+      if (isManualRef.current) return
       try {
-        // 用户有明确偏好则不跟随
         if (localStorage.getItem(THEME_KEY)) return
       } catch { /* noop */ }
       setThemeState(e.matches ? THEMES.DARK : THEMES.LIGHT)
@@ -72,12 +71,23 @@ export function ThemeProvider({ children }) {
 
   const setTheme = useCallback((next) => {
     if (next === THEMES.LIGHT || next === THEMES.DARK) {
+      isManualRef.current = true
       setThemeState(next)
+      try {
+        localStorage.setItem(THEME_KEY, next)
+      } catch { /* noop */ }
     }
   }, [])
 
   const toggleTheme = useCallback(() => {
-    setThemeState((prev) => (prev === THEMES.DARK ? THEMES.LIGHT : THEMES.DARK))
+    isManualRef.current = true
+    setThemeState((prev) => {
+      const next = prev === THEMES.DARK ? THEMES.LIGHT : THEMES.DARK
+      try {
+        localStorage.setItem(THEME_KEY, next)
+      } catch { /* noop */ }
+      return next
+    })
   }, [])
 
   return (

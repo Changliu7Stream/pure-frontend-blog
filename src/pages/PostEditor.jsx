@@ -1,6 +1,7 @@
-import { useEffect, useState, useRef, useCallback } from 'react'
+import { useEffect, useState, useRef, useCallback, useMemo } from 'react'
 import { Editor, Toolbar } from '@wangeditor/editor-for-react'
 import { marked } from 'marked'
+import DOMPurify from 'dompurify'
 import { DataStore } from '../datastore.js'
 import { excerptFromContent } from '../utils.js'
 import { useDocumentMeta } from '../useDocumentMeta.js'
@@ -121,6 +122,7 @@ export default function PostEditor({ navigate, mode, postId }) {
 
   // 自动保存草稿
   const saveDraft = useCallback(() => {
+    if (mode === 'edit') return
     if (saving || loading) return
     const rawContent = contentFormat === 'html' ? htmlContent : mdContent
     if (!title.trim() && !rawContent) return
@@ -170,6 +172,10 @@ export default function PostEditor({ navigate, mode, postId }) {
     if (status === 'scheduled') {
       if (!scheduledAt) { setError('请选择定时发布时间'); return }
       finalScheduledAt = new Date(scheduledAt).getTime()
+      if (scheduledAt && Number.isNaN(finalScheduledAt)) {
+        window.alert('定时发布时间格式无效')
+        return
+      }
       if (finalScheduledAt <= Date.now()) {
         setError('定时发布时间必须晚于当前时间')
         return
@@ -202,9 +208,9 @@ export default function PostEditor({ navigate, mode, postId }) {
     }
   }
 
-  if (loading) return <p className="muted">加载中…</p>
+  const mdPreview = useMemo(() => mdContent ? DOMPurify.sanitize(marked.parse(mdContent)) : '<p class="muted">在左侧输入 Markdown 内容后,这里会显示预览。</p>', [mdContent])
 
-  const mdPreview = mdContent ? marked.parse(mdContent) : '<p class="muted">在左侧输入 Markdown 内容后,这里会显示预览。</p>'
+  if (loading) return <p className="muted">加载中…</p>
 
   return (
     <div className="post-editor">

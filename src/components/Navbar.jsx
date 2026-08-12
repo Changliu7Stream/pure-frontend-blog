@@ -50,7 +50,7 @@ export default function Navbar({ siteTitle, authed, navigate, currentPath }) {
   const pages = DataStore.Pages.getPublished()
 
   // 所有已发布文章 (搜索数据源)
-  const allPosts = useMemo(() => DataStore.Posts.getAll(), [])
+  const allPosts = useMemo(() => DataStore.Posts.getAll(), [currentPath])
 
   // 搜索结果
   const searchResults = useMemo(() => {

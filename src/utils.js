@@ -14,6 +14,7 @@ export function formatDateShort(timestamp) {
 }
 
 export function formatYearMonth(ts) {
+  if (!ts) return ''
   const d = new Date(ts)
   const pad = (n) => String(n).padStart(2, '0')
   return `${d.getFullYear()}年${pad(d.getMonth() + 1)}月`

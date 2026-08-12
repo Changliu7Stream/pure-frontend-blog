@@ -32,7 +32,8 @@ function readJSON(key, fallback) {
   try {
     const raw = localStorage.getItem(key)
     if (raw == null) return fallback
-    return JSON.parse(raw)
+    const parsed = JSON.parse(raw)
+    return parsed == null ? fallback : parsed
   } catch {
     return fallback
   }
@@ -87,7 +88,9 @@ const Posts = {
 
   getBySlug(slug) {
     const all = readJSON(KEYS.POSTS, [])
-    return all.find((p) => p.slug === decodeURIComponent(slug)) || null
+    let decoded
+    try { decoded = decodeURIComponent(slug) } catch { decoded = slug }
+    return all.find((p) => p.slug === decoded) || null
   },
 
   getRecent(limit = 5) {
@@ -262,7 +265,9 @@ const Pages = {
   },
 
   getBySlug(slug) {
-    return readJSON(KEYS.PAGES, []).find((p) => p.slug === decodeURIComponent(slug)) || null
+    let decoded
+    try { decoded = decodeURIComponent(slug) } catch { decoded = slug }
+    return readJSON(KEYS.PAGES, []).find((p) => p.slug === decoded) || null
   },
 
   getPublished() {
@@ -366,7 +371,8 @@ const Comments = {
   },
 
   reply(id, replyContent) {
-    return this.update(id, { reply: replyContent.trim(), replyAt: Date.now() })
+    const content = String(replyContent || '').trim()
+    return this.update(id, { reply: content, replyAt: Date.now() })
   },
 
   delete(id) {
@@ -578,19 +584,22 @@ const Settings = {
 const Drafts = {
   get(key) {
     const all = readJSON(KEYS.DRAFTS, {})
-    return all[key] || null
+    if (!all || typeof all !== 'object') return null
+    return Object.prototype.hasOwnProperty.call(all, key) ? all[key] : null
   },
 
   save(key, data) {
     const all = readJSON(KEYS.DRAFTS, {})
-    all[key] = { ...data, savedAt: Date.now() }
-    writeJSON(KEYS.DRAFTS, all)
+    const safe = (all && typeof all === 'object') ? { ...all } : {}
+    safe[key] = { ...data, savedAt: Date.now() }
+    writeJSON(KEYS.DRAFTS, safe)
   },
 
   delete(key) {
     const all = readJSON(KEYS.DRAFTS, {})
-    delete all[key]
-    writeJSON(KEYS.DRAFTS, all)
+    const safe = (all && typeof all === 'object') ? { ...all } : {}
+    delete safe[key]
+    writeJSON(KEYS.DRAFTS, safe)
   }
 }
 
@@ -686,7 +695,6 @@ const DEFAULT_POST_EXCERPT = '写博客是一种很好的知识沉淀方式。�
 
 function seedDefaultData() {
   const existing = readJSON(KEYS.POSTS, null)
-  // 已有文章数据则不重复创建
   if (existing && Array.isArray(existing) && existing.length > 0) return
 
   const now = Date.now()
@@ -707,6 +715,14 @@ function seedDefaultData() {
     isDefault: true
   }
   writeJSON(KEYS.POSTS, [defaultPost])
+
+  // 确保默认分类存在
+  const cats = readJSON(KEYS.CATEGORIES, null)
+  if (!cats || !Array.isArray(cats) || cats.length === 0) {
+    writeJSON(KEYS.CATEGORIES, [...DEFAULT_CATEGORIES, '随笔'])
+  } else if (!cats.includes('随笔')) {
+    writeJSON(KEYS.CATEGORIES, [...cats, '随笔'])
+  }
 }
 
 // 启动时初始化默认数据 + 检查定时发布

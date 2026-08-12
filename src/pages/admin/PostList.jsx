@@ -76,7 +76,7 @@ export default function PostList({ navigate }) {
   const { items, total } = DataStore.Posts.paginate(filtered, safePage, PAGE_SIZE)
 
   const toggleStatus = (post) => {
-    const next = post.status === 'published' ? 'draft' : 'published'
+    const next = (post.status === 'published' || post.status === 'scheduled') ? 'draft' : 'published'
     try {
       DataStore.Posts.update(post.id, { status: next })
       reload()

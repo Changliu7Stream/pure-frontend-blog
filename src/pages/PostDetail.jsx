@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import DOMPurify from 'dompurify'
 import { marked } from 'marked'
 import { DataStore } from '../datastore.js'
@@ -26,10 +26,24 @@ export default function PostDetail({ slug, navigate, authed }) {
   const [commentContent, setCommentContent] = useState('')
   const [commentSubmitted, setCommentSubmitted] = useState(false)
 
+  const commentTimerRef = useRef(null)
+  const viewedRef = useRef(false)
+  const lastSlugRef = useRef(undefined)
+
   const settings = DataStore.Settings.get()
   const siteTitle = settings.blogName || '我的博客'
 
   useEffect(() => {
+    setNotFound(false)
+    setPost(null)
+
+    // Reset the view guard only when the slug actually changes,
+    // not on StrictMode's double-invoked effect runs.
+    if (lastSlugRef.current !== slug) {
+      viewedRef.current = false
+      lastSlugRef.current = slug
+    }
+
     const data = DataStore.Posts.getBySlug(slug)
     if (!data) {
       setNotFound(true)
@@ -37,10 +51,21 @@ export default function PostDetail({ slug, navigate, authed }) {
     }
     setPost(data)
     setViews(Number(data.views || 0))
-    DataStore.Posts.incrementViews(data.id)
-    setViews((v) => v + 1)
+    if (!viewedRef.current) {
+      DataStore.Posts.incrementViews(data.id)
+      setViews((v) => v + 1)
+      viewedRef.current = true
+    }
     setComments(DataStore.Comments.getByPostId(data.id))
   }, [slug])
+
+  useEffect(() => {
+    return () => {
+      if (commentTimerRef.current) {
+        clearTimeout(commentTimerRef.current)
+      }
+    }
+  }, [])
 
   useDocumentMeta({
     title: post?.title || '',
@@ -74,16 +99,24 @@ export default function PostDetail({ slug, navigate, authed }) {
   const onSubmitComment = (e) => {
     e.preventDefault()
     if (!commentContent.trim()) return
-    DataStore.Comments.create({
-      postId: post.id,
-      author: commentAuthor.trim() || '匿名访客',
-      content: commentContent.trim()
-    })
+    try {
+      DataStore.Comments.create({
+        postId: post.id,
+        author: commentAuthor.trim() || '匿名访客',
+        content: commentContent.trim()
+      })
+    } catch (err) {
+      window.alert('评论提交失败: ' + (err.message || err))
+      return
+    }
     setCommentContent('')
     setCommentSubmitted(true)
     // 刷新评论列表 (新评论可能需要审核)
     setComments(DataStore.Comments.getByPostId(post.id))
-    setTimeout(() => setCommentSubmitted(false), 3000)
+    if (commentTimerRef.current) {
+      clearTimeout(commentTimerRef.current)
+    }
+    commentTimerRef.current = setTimeout(() => setCommentSubmitted(false), 3000)
   }
 
   if (notFound) {

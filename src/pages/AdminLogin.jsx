@@ -12,6 +12,7 @@ export default function AdminLogin({ navigate }) {
   // 登录表单
   const [password, setPassword] = useState('')
   const [loginError, setLoginError] = useState('')
+  const [logging, setLogging] = useState(false)
 
   // 设置表单
   const [username, setUsername] = useState('')
@@ -23,6 +24,7 @@ export default function AdminLogin({ navigate }) {
   const onLogin = async (e) => {
     e.preventDefault()
     setLoginError('')
+    setLogging(true)
     try {
       const ok = await login(password)
       if (ok) {
@@ -33,6 +35,8 @@ export default function AdminLogin({ navigate }) {
       }
     } catch (err) {
       setLoginError(err.message || '登录失败')
+    } finally {
+      setLogging(false)
     }
   }
 
@@ -47,8 +51,12 @@ export default function AdminLogin({ navigate }) {
     try {
       await setupAdmin({ username, password: setupPassword })
       // 设置成功后自动登录
-      await login(setupPassword)
-      navigate('/admin')
+      const ok = await login(setupPassword)
+      if (ok) {
+        navigate('/admin')
+      } else {
+        setSetupError('登录失败,请重试')
+      }
     } catch (err) {
       setSetupError(err.message || '设置失败')
     } finally {
@@ -134,7 +142,7 @@ export default function AdminLogin({ navigate }) {
           />
         </label>
         {loginError && <div className="alert alert-error">{loginError}</div>}
-        <button type="submit" className="btn btn-primary btn-block">登录</button>
+        <button type="submit" className="btn btn-primary btn-block" disabled={logging}>登录</button>
         <button type="button" className="btn btn-link" onClick={() => navigate('/')}>
           返回首页
         </button>

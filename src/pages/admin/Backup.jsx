@@ -61,6 +61,7 @@ export default function Backup({ navigate }) {
   const [cloudFiles, setCloudFiles] = useState([])
   const [loadingFiles, setLoadingFiles] = useState(false)
   const [cloudError, setCloudError] = useState('')
+  const [cloudEmpty, setCloudEmpty] = useState(false)
 
   // ---- 本地恢复预览 ----
   const [localPreview, setLocalPreview] = useState(null)
@@ -97,14 +98,17 @@ export default function Backup({ navigate }) {
     }
     setTesting(true)
     setTestResult(null)
-    const result = await testConnection(webdavUrl, webdavUser, webdavPass)
-    setTestResult(result)
-    if (result.ok) {
-      toast.success(result.message)
-    } else {
-      toast.error(result.message)
+    try {
+      const result = await testConnection(webdavUrl, webdavUser, webdavPass)
+      setTestResult(result)
+      if (result.ok) {
+        toast.success(result.message)
+      } else {
+        toast.error(result.message)
+      }
+    } finally {
+      setTesting(false)
     }
-    setTesting(false)
   }
 
   const onSaveConfig = () => {
@@ -174,6 +178,7 @@ export default function Backup({ navigate }) {
     const targetPass = pass || webdavPass
     if (!targetUrl.trim() || !targetUser.trim()) {
       setCloudError('请先配置 WebDAV')
+      setCloudEmpty(false)
       return
     }
     setLoadingFiles(true)
@@ -182,11 +187,14 @@ export default function Backup({ navigate }) {
     if (result.ok) {
       setCloudFiles(result.files)
       if (result.files.length === 0) {
-        setCloudError('备份目录为空,点击"立即备份"创建第一个备份。')
+        setCloudEmpty(true)
+      } else {
+        setCloudEmpty(false)
       }
     } else {
       setCloudFiles([])
       setCloudError(result.message)
+      setCloudEmpty(false)
     }
     setLoadingFiles(false)
   }
@@ -260,6 +268,7 @@ export default function Backup({ navigate }) {
     reader.onerror = () => {
       toast.error('读取文件失败,请重试')
       setLocalPreview(null)
+      if (localFileRef.current) localFileRef.current.value = ''
     }
     reader.readAsText(file)
   }
@@ -651,7 +660,7 @@ export default function Backup({ navigate }) {
               </div>
             )}
 
-            {webdavUrl.trim() && !loadingFiles && !cloudError && cloudFiles.length === 0 && (
+            {webdavUrl.trim() && !loadingFiles && cloudEmpty && (
               <div className="empty-state">
                 <p>暂无云端备份文件。</p>
                 <p className="muted small">点击"立即备份"将数据上传到 WebDAV 服务器。</p>

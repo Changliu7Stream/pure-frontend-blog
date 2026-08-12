@@ -44,7 +44,8 @@ function normalizeUrl(url) {
  * 拼接完整的文件 URL
  */
 function fileUrl(baseUrl, filename) {
-  return normalizeUrl(baseUrl) + encodeURIComponent(filename).replace(/%2F/g, '/')
+  const safeName = String(filename || '').replace(/\.\.\//g, '').replace(/\.\.\\/g, '')
+  return normalizeUrl(baseUrl) + encodeURIComponent(safeName)
 }
 
 // ==================== 配置存取 (加密存储) ====================
@@ -412,10 +413,10 @@ export function formatWebDAVDate(dateStr) {
 }
 
 /**
- * 生成备份文件名: backup-YYYY-MM-DD-HHmm.json
+ * 生成备份文件名: backup-YYYY-MM-DD-HHmmss.json
  */
 export function generateBackupFilename() {
   const d = new Date()
   const pad = (n) => String(n).padStart(2, '0')
-  return `backup-${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}.json`
+  return `backup-${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}.json`
 }

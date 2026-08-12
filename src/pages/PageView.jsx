@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import DOMPurify from 'dompurify'
 import { marked } from 'marked'
 import { DataStore } from '../datastore.js'
@@ -9,13 +9,20 @@ marked.setOptions({ breaks: true, gfm: true })
 
 const PURIFY_CONFIG = {
   ADD_ATTR: ['target', 'rel'],
+  ADD_URI_SAFE_ATTR: ['src', 'href'],
   ALLOW_DATA_ATTR: true,
   ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto|ftp|tel):|[^a-z]|[a-z+.-]+(?:[^a-z+.\-:]|$))|^data:image\/(?:png|jpe?g|gif|webp|svg\+xml|bmp)/i
 }
 
 export default function PageView({ slug, navigate }) {
-  const page = DataStore.Pages.getBySlug(slug)
-  const [notFound] = useState(!page)
+  const [page, setPage] = useState(null)
+  const [notFound, setNotFound] = useState(false)
+
+  useEffect(() => {
+    const data = DataStore.Pages.getBySlug(slug)
+    setPage(data)
+    setNotFound(!data)
+  }, [slug])
 
   const siteTitle = DataStore.Settings.get().blogName || '我的博客'
   useDocumentMeta({
@@ -49,6 +56,8 @@ export default function PageView({ slug, navigate }) {
       </div>
     )
   }
+
+  if (!page) return <p className="muted">加载中…</p>
 
   return (
     <article className="post-detail">

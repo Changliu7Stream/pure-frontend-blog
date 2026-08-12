@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo } from 'react'
 import { marked } from 'marked'
+import DOMPurify from 'dompurify'
 import { DataStore } from '../../datastore.js'
 import { useDocumentMeta } from '../../useDocumentMeta.js'
 import { formatDate } from '../../utils.js'
@@ -102,7 +103,7 @@ export default function Pages({ navigate }) {
 
   const mdPreview = useMemo(() => {
     return form.content
-      ? marked.parse(form.content)
+      ? DOMPurify.sanitize(marked.parse(form.content))
       : '<p class="muted">在左侧输入 Markdown 内容后,这里会显示预览。</p>'
   }, [form.content])
 
