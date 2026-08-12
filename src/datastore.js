@@ -668,9 +668,50 @@ export {
   Backup as backupApi
 }
 
-// 启动时检查定时发布
+// ==================== 默认数据初始化 ====================
+
+const DEFAULT_POST_CONTENT = `<h2>为什么写博客？</h2>
+<p>写博客是一种很好的知识沉淀方式。无论是技术笔记、生活感悟还是读书心得，记录下来不仅能帮助自己梳理思路，也能在未来某个时刻回看当时的自己。</p>
+<h2>这篇文章要测试什么？</h2>
+<ul>
+  <li><strong>富文本渲染</strong>：检查标题、段落、列表、引用等格式是否正确显示。</li>
+  <li><strong>分类与标签</strong>：验证分类和标签能否正确关联到文章。</li>
+  <li><strong>评论功能</strong>：测试读者是否可以正常提交评论。</li>
+  <li><strong>阅读量统计</strong>：查看文章被访问后阅读量是否会增加。</li>
+</ul>
+<blockquote><p>"写作是思考的延伸，分享是学习的开始。" —— 某位爱写博客的人</p></blockquote>
+<p>这是初始默认博客展示文章，管理后台可以删除默认的这篇文章。</p>`
+
+const DEFAULT_POST_EXCERPT = '写博客是一种很好的知识沉淀方式。这篇文章用于测试富文本渲染、分类与标签、评论功能及阅读量统计。'
+
+function seedDefaultData() {
+  const existing = readJSON(KEYS.POSTS, null)
+  // 已有文章数据则不重复创建
+  if (existing && Array.isArray(existing) && existing.length > 0) return
+
+  const now = Date.now()
+  const defaultPost = {
+    id: now,
+    title: 'Hello World！这是我的第一篇博客文章',
+    slug: 'hello-world',
+    content: DEFAULT_POST_CONTENT,
+    contentFormat: 'html',
+    excerpt: DEFAULT_POST_EXCERPT,
+    tags: ['测试', '公告'],
+    category: '随笔',
+    status: 'published',
+    scheduledAt: null,
+    views: 0,
+    createdAt: now,
+    updatedAt: now,
+    isDefault: true
+  }
+  writeJSON(KEYS.POSTS, [defaultPost])
+}
+
+// 启动时初始化默认数据 + 检查定时发布
 if (typeof window !== 'undefined') {
+  seedDefaultData()
   DataStore.Posts.checkScheduled()
-  // 每 60 秒检查一次定时发布
   setInterval(() => DataStore.Posts.checkScheduled(), 60000)
 }
