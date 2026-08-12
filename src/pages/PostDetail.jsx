@@ -5,6 +5,7 @@ import { DataStore } from '../datastore.js'
 import { formatDate } from '../utils.js'
 import { useDocumentMeta } from '../useDocumentMeta.js'
 import { ArrowLeftIcon, EyeIcon, EditIcon, TrashIcon, MessageIcon } from '../icons.jsx'
+import { useToast } from '../components/Toast.jsx'
 
 marked.setOptions({ breaks: true, gfm: true })
 
@@ -72,6 +73,7 @@ export default function PostDetail({ slug, navigate, authed }) {
     description: post?.excerpt || '',
     siteTitle
   })
+  const toast = useToast()
 
   const renderedHtml = useMemo(() => {
     if (!post) return ''
@@ -92,7 +94,7 @@ export default function PostDetail({ slug, navigate, authed }) {
       DataStore.Posts.delete(post.id)
       navigate('/')
     } catch (err) {
-      window.alert('删除失败: ' + (err.message || err))
+      toast.error('删除失败: ' + (err.message || err))
     }
   }
 
@@ -106,7 +108,7 @@ export default function PostDetail({ slug, navigate, authed }) {
         content: commentContent.trim()
       })
     } catch (err) {
-      window.alert('评论提交失败: ' + (err.message || err))
+      toast.error('评论提交失败: ' + (err.message || err))
       return
     }
     setCommentContent('')

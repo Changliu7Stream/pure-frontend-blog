@@ -5,6 +5,7 @@ import { formatDate } from '../../utils.js'
 import {
   CheckIcon, XIcon, ReplyIcon, TrashIcon, ClockIcon, FileTextIcon
 } from '../../icons.jsx'
+import { useToast } from '../../components/Toast.jsx'
 
 const FILTERS = [
   { key: 'all', label: '全部' },
@@ -49,6 +50,7 @@ function StatusBadge({ status }) {
 
 export default function Comments({ navigate }) {
   useDocumentMeta({ title: '评论管理', siteTitle: '管理后台' })
+  const toast = useToast()
 
   const [comments, setComments] = useState([])
   const [counts, setCounts] = useState({ total: 0, pending: 0, approved: 0, rejected: 0 })
@@ -75,7 +77,7 @@ export default function Comments({ navigate }) {
       DataStore.Comments.approve(id)
       reload()
     } catch (err) {
-      window.alert('操作失败: ' + (err.message || err))
+      toast.error('操作失败: ' + (err.message || err))
     }
   }
 
@@ -84,7 +86,7 @@ export default function Comments({ navigate }) {
       DataStore.Comments.reject(id)
       reload()
     } catch (err) {
-      window.alert('操作失败: ' + (err.message || err))
+      toast.error('操作失败: ' + (err.message || err))
     }
   }
 
@@ -98,7 +100,7 @@ export default function Comments({ navigate }) {
       }
       reload()
     } catch (err) {
-      window.alert('删除失败: ' + (err.message || err))
+      toast.error('删除失败: ' + (err.message || err))
     }
   }
 

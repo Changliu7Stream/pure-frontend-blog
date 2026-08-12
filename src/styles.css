@@ -1706,7 +1706,7 @@ html.dark .logo-preview-img {
   max-width: 200px;
 }
 
-/* --------------- Toast 通知 --------------- */
+/* --------------- Toast 通知 (毛玻璃渐变 · 右上角弹出) --------------- */
 .toast-container {
   position: fixed;
   top: 76px;
@@ -1714,52 +1714,206 @@ html.dark .logo-preview-img {
   z-index: 9999;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
   pointer-events: none;
   max-width: 380px;
+  width: 380px;
 }
+
 .toast {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 12px 16px;
-  border-radius: var(--radius);
-  box-shadow: var(--shadow-lg);
+  gap: 12px;
+  padding: 14px 18px 14px 16px;
+  border-radius: 14px;
   font-size: 14px;
+  font-weight: 500;
   cursor: pointer;
   pointer-events: auto;
-  animation: toast-in 0.25s ease;
-  border: 1px solid var(--border);
-  background: var(--surface);
+  overflow: hidden;
+  /* 毛玻璃核心: 半透明 + backdrop-blur */
+  background: rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.65);
   color: var(--text);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.12),
+    0 2px 8px rgba(0, 0, 0, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  will-change: transform, opacity;
+}
+
+/* 暗色模式毛玻璃 */
+html.dark .toast {
+  background: rgba(30, 41, 59, 0.6);
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.4),
+    0 2px 8px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(148, 163, 184, 0.15);
+}
+
+/* 渐变高光条 (左侧) */
+.toast::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 4px;
+  border-radius: 4px 0 0 4px;
+  opacity: 0.95;
+}
+
+/* 类型变体: 渐变高光 + 浅色渐变底 */
+.toast.toast-success::before {
+  background: linear-gradient(180deg, #34D399, #10B981);
 }
 .toast.toast-success {
-  background: var(--ok-soft);
-  border-color: var(--ok);
-  color: var(--ok);
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.14), rgba(52, 211, 153, 0.08)), rgba(255, 255, 255, 0.55);
+}
+html.dark .toast.toast-success {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.22), rgba(52, 211, 153, 0.12)), rgba(30, 41, 59, 0.6);
+}
+
+.toast.toast-error::before {
+  background: linear-gradient(180deg, #F87171, #EF4444);
 }
 .toast.toast-error {
-  background: var(--danger-soft);
-  border-color: var(--danger);
-  color: var(--danger);
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.14), rgba(248, 113, 113, 0.08)), rgba(255, 255, 255, 0.55);
+}
+html.dark .toast.toast-error {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.22), rgba(248, 113, 113, 0.12)), rgba(30, 41, 59, 0.6);
+}
+
+.toast.toast-info::before {
+  background: linear-gradient(180deg, #60A5FA, #3B82F6);
 }
 .toast.toast-info {
-  background: var(--primary-soft);
-  border-color: var(--primary);
-  color: var(--primary);
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.14), rgba(96, 165, 250, 0.08)), rgba(255, 255, 255, 0.55);
 }
+html.dark .toast.toast-info {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.22), rgba(96, 165, 250, 0.12)), rgba(30, 41, 59, 0.6);
+}
+
+.toast.toast-warning::before {
+  background: linear-gradient(180deg, #FBBF24, #F59E0B);
+}
+.toast.toast-warning {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.14), rgba(251, 191, 36, 0.08)), rgba(255, 255, 255, 0.55);
+}
+html.dark .toast.toast-warning {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.22), rgba(251, 191, 36, 0.12)), rgba(30, 41, 59, 0.6);
+}
+
+/* 图标着色 */
 .toast-icon {
   flex-shrink: 0;
   display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px; height: 32px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.5);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
 }
+html.dark .toast-icon {
+  background: rgba(255, 255, 255, 0.08);
+}
+.toast-success .toast-icon { color: #059669; }
+.toast-error .toast-icon { color: #DC2626; }
+.toast-info .toast-icon { color: #2563EB; }
+.toast-warning .toast-icon { color: #D97706; }
+
 .toast-message {
   flex: 1;
   word-break: break-word;
+  line-height: 1.5;
+  color: var(--text);
+}
+
+.toast-close {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px; height: 24px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background 0.18s, color 0.18s;
+  padding: 0;
+}
+.toast-close:hover {
+  background: rgba(0, 0, 0, 0.08);
+  color: var(--text);
+}
+html.dark .toast-close:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+/* 进入动画: 从右上角滑入 + 淡入 + 轻微缩放 */
+.toast-enter {
+  animation: toast-in 0.42s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* 离开动画: 向右滑出 + 淡出 + 缩小 */
+.toast-leave {
+  animation: toast-out 0.32s cubic-bezier(0.55, 0, 0.7, 0) both;
 }
 
 @keyframes toast-in {
-  from { opacity: 0; transform: translateX(40px); }
-  to { opacity: 1; transform: translateX(0); }
+  0% {
+    opacity: 0;
+    transform: translateX(60px) translateY(-8px) scale(0.92);
+    filter: blur(4px);
+  }
+  60% {
+    opacity: 1;
+    filter: blur(0);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0) translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+@keyframes toast-out {
+  0% {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+    filter: blur(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(80px) scale(0.9);
+    filter: blur(2px);
+  }
+}
+
+/* 尊重用户的减少动画偏好 */
+@media (prefers-reduced-motion: reduce) {
+  .toast-enter { animation: toast-in-fade 0.2s ease both; }
+  .toast-leave { animation: toast-out-fade 0.2s ease both; }
+  @keyframes toast-in-fade {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes toast-out-fade {
+    from { opacity: 1; }
+    to { opacity: 0; }
+  }
+}
+
+@media (max-width: 768px) {
+  .toast-container { left: 12px; right: 12px; max-width: none; width: auto; top: 72px; }
+  .toast { padding: 12px 14px; font-size: 13px; }
+  .toast-icon { width: 28px; height: 28px; }
 }
 
 /* --------------- Modal 弹窗 --------------- */
@@ -2102,7 +2256,6 @@ html.dark .logo-preview-img {
   .filter-bar { flex-direction: column; align-items: stretch; }
   .filter-bar .input { width: 100%; }
   .quick-actions { grid-template-columns: repeat(2, 1fr); }
-  .toast-container { left: 12px; right: 12px; max-width: none; top: 72px; }
   .manual-action { flex-direction: column; align-items: stretch; }
   .manual-action .btn { width: 100%; }
   .modal-box { padding: 20px; }

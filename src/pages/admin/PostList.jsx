@@ -3,6 +3,7 @@ import { DataStore } from '../../datastore.js'
 import { formatDate } from '../../utils.js'
 import { useDocumentMeta } from '../../useDocumentMeta.js'
 import { SearchIcon, EditIcon, TrashIcon, PlusIcon, EyeIcon } from '../../icons.jsx'
+import { useToast } from '../../components/Toast.jsx'
 
 const PAGE_SIZE = 10
 
@@ -29,6 +30,7 @@ function pageRange(current, total) {
 
 export default function PostList({ navigate }) {
   useDocumentMeta({ title: '文章管理', siteTitle: '管理后台' })
+  const toast = useToast()
 
   const [posts, setPosts] = useState([])
   const [categories, setCategories] = useState([])
@@ -81,7 +83,7 @@ export default function PostList({ navigate }) {
       DataStore.Posts.update(post.id, { status: next })
       reload()
     } catch (err) {
-      window.alert('状态切换失败: ' + (err.message || err))
+      toast.error('状态切换失败: ' + (err.message || err))
     }
   }
 
@@ -91,7 +93,7 @@ export default function PostList({ navigate }) {
       DataStore.Posts.delete(post.id)
       reload()
     } catch (err) {
-      window.alert('删除失败: ' + (err.message || err))
+      toast.error('删除失败: ' + (err.message || err))
     }
   }
 

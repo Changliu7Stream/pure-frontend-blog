@@ -8,11 +8,13 @@ import {
   PlusIcon, EditIcon, TrashIcon, SaveIcon, XIcon,
   GlobeIcon, EyeOffIcon
 } from '../../icons.jsx'
+import { useToast } from '../../components/Toast.jsx'
 
 const EMPTY_FORM = { title: '', content: '', contentFormat: 'html', published: true }
 
 export default function Pages({ navigate }) {
   useDocumentMeta({ title: '页面管理', siteTitle: '管理后台' })
+  const toast = useToast()
 
   const [pages, setPages] = useState([])
   // null = 列表模式; 'new' = 新建; pageId = 编辑该页面
@@ -86,7 +88,7 @@ export default function Pages({ navigate }) {
       DataStore.Pages.togglePublished(page.id)
       reload()
     } catch (err) {
-      window.alert('状态切换失败: ' + (err.message || err))
+      toast.error('状态切换失败: ' + (err.message || err))
     }
   }
 
@@ -97,7 +99,7 @@ export default function Pages({ navigate }) {
       if (editing === page.id) cancelEdit()
       reload()
     } catch (err) {
-      window.alert('删除失败: ' + (err.message || err))
+      toast.error('删除失败: ' + (err.message || err))
     }
   }
 

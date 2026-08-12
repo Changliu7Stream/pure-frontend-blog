@@ -6,6 +6,7 @@ import { DataStore } from '../datastore.js'
 import { excerptFromContent } from '../utils.js'
 import { useDocumentMeta } from '../useDocumentMeta.js'
 import { ArrowLeftIcon, SaveIcon, ClockIcon } from '../icons.jsx'
+import { useToast } from '../components/Toast.jsx'
 
 import '@wangeditor/editor/dist/css/style.css'
 
@@ -14,6 +15,7 @@ const AUTOSAVE_INTERVAL = 5000 // 5 秒自动保存草稿
 
 export default function PostEditor({ navigate, mode, postId }) {
   useDocumentMeta({ title: mode === 'edit' ? '编辑文章' : '写新文章', siteTitle: '管理后台' })
+  const toast = useToast()
 
   const [title, setTitle] = useState('')
   const [tags, setTags] = useState('')
@@ -173,7 +175,7 @@ export default function PostEditor({ navigate, mode, postId }) {
       if (!scheduledAt) { setError('请选择定时发布时间'); return }
       finalScheduledAt = new Date(scheduledAt).getTime()
       if (scheduledAt && Number.isNaN(finalScheduledAt)) {
-        window.alert('定时发布时间格式无效')
+        toast.error('定时发布时间格式无效')
         return
       }
       if (finalScheduledAt <= Date.now()) {
