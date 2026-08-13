@@ -34,7 +34,7 @@ export default function PostEditor({ navigate, mode, postId }) {
 
   const [loading, setLoading] = useState(mode === 'edit')
   const [saving, setSaving] = useState(false)
-  const [error, setError] = useState('')
+  const [fieldError, setFieldError] = useState('')
   const [autoSavedAt, setAutoSavedAt] = useState(null)
   const [draftRestored, setDraftRestored] = useState(false)
 
@@ -92,7 +92,7 @@ export default function PostEditor({ navigate, mode, postId }) {
     setLoading(true)
     const p = DataStore.Posts.getById(postId)
     if (!p) {
-      setError('文章不存在')
+      toast.error('文章不存在')
       setLoading(false)
       return
     }
@@ -152,17 +152,17 @@ export default function PostEditor({ navigate, mode, postId }) {
       setCategory(n)
       setNewCategory('')
     } catch (err) {
-      setError(err.message)
+      toast.error(err.message)
     }
   }
 
   const onSubmit = async (e) => {
     e.preventDefault()
-    setError('')
-    if (!title.trim()) { setError('请填写标题'); return }
+    setFieldError('')
+    if (!title.trim()) { setFieldError('请填写标题'); return }
     const rawContent = contentFormat === 'html' ? htmlContent : mdContent
     if (!rawContent || (contentFormat === 'html' && htmlContent === '<p><br></p>')) {
-      setError('请填写正文内容')
+      setFieldError('请填写正文内容')
       return
     }
     const tagArr = tags.split(/[,，]/).map((t) => t.trim()).filter(Boolean)
@@ -172,14 +172,14 @@ export default function PostEditor({ navigate, mode, postId }) {
     let finalStatus = status
     let finalScheduledAt = null
     if (status === 'scheduled') {
-      if (!scheduledAt) { setError('请选择定时发布时间'); return }
+      if (!scheduledAt) { setFieldError('请选择定时发布时间'); return }
       finalScheduledAt = new Date(scheduledAt).getTime()
       if (scheduledAt && Number.isNaN(finalScheduledAt)) {
         toast.error('定时发布时间格式无效')
         return
       }
       if (finalScheduledAt <= Date.now()) {
-        setError('定时发布时间必须晚于当前时间')
+        setFieldError('定时发布时间必须晚于当前时间')
         return
       }
     }
@@ -204,7 +204,7 @@ export default function PostEditor({ navigate, mode, postId }) {
       }
       navigate('/admin/posts')
     } catch (err) {
-      setError(err.message || '保存失败')
+      toast.error(err.message || '保存失败')
     } finally {
       setSaving(false)
     }
@@ -384,7 +384,7 @@ export default function PostEditor({ navigate, mode, postId }) {
           </div>
         )}
 
-        {error && <div className="alert alert-error">{error}</div>}
+        {fieldError && <div className="alert alert-error">{fieldError}</div>}
 
         <div className="editor-actions">
           <button type="submit" className="btn btn-primary" disabled={saving}>

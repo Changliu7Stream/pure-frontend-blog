@@ -20,7 +20,7 @@ export default function Pages({ navigate }) {
   // null = 列表模式; 'new' = 新建; pageId = 编辑该页面
   const [editing, setEditing] = useState(null)
   const [form, setForm] = useState(EMPTY_FORM)
-  const [error, setError] = useState('')
+  const [fieldError, setFieldError] = useState('')
   const [saving, setSaving] = useState(false)
 
   const reload = () => {
@@ -34,7 +34,7 @@ export default function Pages({ navigate }) {
   const startNew = () => {
     setForm(EMPTY_FORM)
     setEditing('new')
-    setError('')
+    setFieldError('')
   }
 
   const startEdit = (page) => {
@@ -47,20 +47,20 @@ export default function Pages({ navigate }) {
       published: latest.published !== false
     })
     setEditing(latest.id)
-    setError('')
+    setFieldError('')
   }
 
   const cancelEdit = () => {
     setEditing(null)
     setForm(EMPTY_FORM)
-    setError('')
+    setFieldError('')
   }
 
   const onSave = (e) => {
     e.preventDefault()
-    setError('')
-    if (!form.title.trim()) { setError('请填写标题'); return }
-    if (!form.content.trim()) { setError('请填写页面内容'); return }
+    setFieldError('')
+    if (!form.title.trim()) { setFieldError('请填写标题'); return }
+    if (!form.content.trim()) { setFieldError('请填写页面内容'); return }
     setSaving(true)
     try {
       const payload = {
@@ -77,7 +77,7 @@ export default function Pages({ navigate }) {
       reload()
       cancelEdit()
     } catch (err) {
-      setError(err.message || '保存失败')
+      toast.error(err.message || '保存失败')
     } finally {
       setSaving(false)
     }
@@ -214,7 +214,7 @@ export default function Pages({ navigate }) {
             </div>
           )}
 
-          {error && <div className="alert alert-error">{error}</div>}
+          {fieldError && <div className="alert alert-error">{fieldError}</div>}
 
           <div className="editor-actions">
             <button type="submit" className="btn btn-primary" disabled={saving}>

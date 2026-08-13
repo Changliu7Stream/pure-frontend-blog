@@ -1,6 +1,8 @@
+import { useEffect, useState } from 'react'
 import { DataStore } from '../../datastore.js'
 import { formatDate } from '../../utils.js'
 import { useDocumentMeta } from '../../useDocumentMeta.js'
+import { useToast } from '../../components/Toast.jsx'
 import {
   FileTextIcon,
   EyeIcon,
@@ -27,18 +29,21 @@ const QUICK_ACTIONS = [
 
 export default function Dashboard({ navigate }) {
   useDocumentMeta({ title: '仪表盘', siteTitle: '管理后台' })
+  const toast = useToast()
 
-  let stats = null
-  let comments = null
-  let recent = []
-  let error = ''
-  try {
-    stats = DataStore.Posts.getStats()
-    comments = DataStore.Comments.getCounts()
-    recent = DataStore.Posts.getRecent(5)
-  } catch (err) {
-    error = err.message || '加载失败'
-  }
+  const [stats, setStats] = useState(null)
+  const [comments, setComments] = useState(null)
+  const [recent, setRecent] = useState([])
+
+  useEffect(() => {
+    try {
+      setStats(DataStore.Posts.getStats())
+      setComments(DataStore.Comments.getCounts())
+      setRecent(DataStore.Posts.getRecent(5))
+    } catch (err) {
+      toast.error(err.message || '加载失败')
+    }
+  }, [])
 
   const statCards = stats
     ? [
@@ -61,8 +66,6 @@ export default function Dashboard({ navigate }) {
           <p className="muted">共 {stats ? stats.total : 0} 篇文章</p>
         </div>
       </div>
-
-      {error && <div className="alert alert-error">{error}</div>}
 
       {stats && (
         <div className="stats-row">

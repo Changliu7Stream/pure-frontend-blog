@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { DataStore } from '../../datastore.js'
 import { useDocumentMeta } from '../../useDocumentMeta.js'
 import { useTheme } from '../../theme.jsx'
+import { useToast } from '../../components/Toast.jsx'
 import { SaveIcon, CheckIcon, TrashIcon, UploadIcon, PaintIcon, ImageIcon } from '../../icons.jsx'
 
 const THEME_PRESETS = [
@@ -69,10 +70,9 @@ function processLogoFile(file, maxSize = LOGO_MAX_SIZE) {
 export default function Settings({ navigate }) {
   useDocumentMeta({ title: '系统设置', siteTitle: '管理后台' })
   const { applyThemeColors } = useTheme()
+  const toast = useToast()
 
   const [form, setForm] = useState(EMPTY_FORM)
-  const [message, setMessage] = useState('')
-  const [error, setError] = useState('')
   const logoInputRef = useRef(null)
   const [logoUploading, setLogoUploading] = useState(false)
 
@@ -107,13 +107,12 @@ export default function Settings({ navigate }) {
     const file = e.target.files && e.target.files[0]
     if (!file) return
     setLogoUploading(true)
-    setError('')
     try {
       const base64 = await processLogoFile(file)
       update('logoData', base64)
       update('logo', '')
     } catch (err) {
-      setError('Logo 处理失败: ' + (err.message || err))
+      toast.error('Logo 处理失败: ' + (err.message || err))
     } finally {
       setLogoUploading(false)
       if (logoInputRef.current) logoInputRef.current.value = ''
@@ -148,11 +147,9 @@ export default function Settings({ navigate }) {
       })
       setForm((f) => ({ ...f, ...next }))
       applyThemeColors(next.themeColors)
-      setMessage('设置已保存。')
-      setError('')
+      toast.success('设置已保存。')
     } catch (err) {
-      setError('保存失败: ' + (err.message || err))
-      setMessage('')
+      toast.error('保存失败: ' + (err.message || err))
     }
   }
 
@@ -162,11 +159,9 @@ export default function Settings({ navigate }) {
       const defaults = DataStore.Settings.reset()
       setForm({ ...EMPTY_FORM, ...defaults })
       applyThemeColors(defaults.themeColors || DEFAULT_COLORS)
-      setMessage('设置已重置为默认值。')
-      setError('')
+      toast.success('设置已重置为默认值。')
     } catch (err) {
-      setError('重置失败: ' + (err.message || err))
-      setMessage('')
+      toast.error('重置失败: ' + (err.message || err))
     }
   }
 
@@ -178,17 +173,6 @@ export default function Settings({ navigate }) {
           <p className="muted">配置博客基本信息、Logo、主题风格,保存后立即生效</p>
         </div>
       </div>
-
-      {message && (
-        <div
-          className="alert"
-          style={{ background: 'var(--ok-soft)', color: 'var(--ok)', display: 'flex', alignItems: 'center', gap: 8 }}
-        >
-          <CheckIcon size={16} />
-          <span>{message}</span>
-        </div>
-      )}
-      {error && <div className="alert alert-error">{error}</div>}
 
       <form onSubmit={handleSave} className="settings-form">
         {/* ============ 站点信息卡片 ============ */}

@@ -54,13 +54,11 @@ export default function Backup({ navigate }) {
   const [showPassword, setShowPassword] = useState(false)
   const [configSaved, setConfigSaved] = useState(false)
   const [testing, setTesting] = useState(false)
-  const [testResult, setTestResult] = useState(null) // { ok, message }
   const [backing, setBacking] = useState(false)
 
   // ---- 云端文件列表 ----
   const [cloudFiles, setCloudFiles] = useState([])
   const [loadingFiles, setLoadingFiles] = useState(false)
-  const [cloudError, setCloudError] = useState('')
   const [cloudEmpty, setCloudEmpty] = useState(false)
 
   // ---- 本地恢复预览 ----
@@ -97,10 +95,8 @@ export default function Backup({ navigate }) {
       return
     }
     setTesting(true)
-    setTestResult(null)
     try {
       const result = await testConnection(webdavUrl, webdavUser, webdavPass)
-      setTestResult(result)
       if (result.ok) {
         toast.success(result.message)
       } else {
@@ -129,7 +125,6 @@ export default function Backup({ navigate }) {
     setWebdavPass('')
     setConfigSaved(false)
     setCloudFiles([])
-    setTestResult(null)
     toast.info('已清除 WebDAV 配置')
   }
 
@@ -177,12 +172,11 @@ export default function Backup({ navigate }) {
     const targetUser = user || webdavUser
     const targetPass = pass || webdavPass
     if (!targetUrl.trim() || !targetUser.trim()) {
-      setCloudError('请先配置 WebDAV')
+      toast.error('请先配置 WebDAV')
       setCloudEmpty(false)
       return
     }
     setLoadingFiles(true)
-    setCloudError('')
     const result = await listFiles(targetUrl, targetUser, targetPass)
     if (result.ok) {
       setCloudFiles(result.files)
@@ -193,8 +187,8 @@ export default function Backup({ navigate }) {
       }
     } else {
       setCloudFiles([])
-      setCloudError(result.message)
       setCloudEmpty(false)
+      toast.error(result.message)
     }
     setLoadingFiles(false)
   }
@@ -404,7 +398,7 @@ export default function Backup({ navigate }) {
                 type="url"
                 className="input"
                 value={webdavUrl}
-                onChange={(e) => { setWebdavUrl(e.target.value); setConfigSaved(false); setTestResult(null) }}
+                onChange={(e) => { setWebdavUrl(e.target.value); setConfigSaved(false) }}
                 placeholder="https://dav.jianguoyun.com/dav/"
                 autoComplete="off"
               />
@@ -416,7 +410,7 @@ export default function Backup({ navigate }) {
                 type="text"
                 className="input"
                 value={webdavUser}
-                onChange={(e) => { setWebdavUser(e.target.value); setConfigSaved(false); setTestResult(null) }}
+                onChange={(e) => { setWebdavUser(e.target.value); setConfigSaved(false) }}
                 placeholder="WebDAV 用户名"
                 autoComplete="off"
               />
@@ -429,7 +423,7 @@ export default function Backup({ navigate }) {
                   type={showPassword ? 'text' : 'password'}
                   className="input"
                   value={webdavPass}
-                  onChange={(e) => { setWebdavPass(e.target.value); setConfigSaved(false); setTestResult(null) }}
+                  onChange={(e) => { setWebdavPass(e.target.value); setConfigSaved(false) }}
                   placeholder="WebDAV 密码 / 应用密码"
                   autoComplete="off"
                 />
@@ -443,23 +437,6 @@ export default function Backup({ navigate }) {
                 </button>
               </div>
             </label>
-
-            {testResult && (
-              <div
-                className="alert"
-                style={{
-                  background: testResult.ok ? 'var(--ok-soft)' : 'var(--danger-soft)',
-                  color: testResult.ok ? 'var(--ok)' : 'var(--danger)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 8,
-                  marginTop: 12
-                }}
-              >
-                {testResult.ok ? <CheckIcon size={16} /> : <AlertTriangleIcon size={16} />}
-                <span>{testResult.message}</span>
-              </div>
-            )}
 
             <div className="backup-btn-row">
               <button
@@ -603,23 +580,6 @@ export default function Backup({ navigate }) {
 
             {webdavUrl.trim() && loadingFiles && (
               <p className="muted">正在加载云端文件列表…</p>
-            )}
-
-            {webdavUrl.trim() && !loadingFiles && cloudError && cloudFiles.length === 0 && (
-              <div className="alert alert-error">
-                <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
-                  <AlertTriangleIcon size={16} style={{ flexShrink: 0, marginTop: 2 }} />
-                  <div>
-                    <p style={{ margin: '0 0 8px' }}>{cloudError}</p>
-                    {cloudError.includes('CORS') && (
-                      <p className="muted small" style={{ margin: 0 }}>
-                        提示: 需要在 WebDAV 服务器端 (Nginx / 坚果云 / Nextcloud) 开启 CORS 跨域访问,
-                        或在应用前端配置代理服务转发请求。
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </div>
             )}
 
             {cloudFiles.length > 0 && (

@@ -1,25 +1,19 @@
 import { useCallback, useEffect, useState } from 'react'
 import { DataStore } from '../../datastore.js'
 import { useDocumentMeta } from '../../useDocumentMeta.js'
+import { useToast } from '../../components/Toast.jsx'
 import {
   PlusIcon, EditIcon, TrashIcon, FolderIcon, CheckIcon, XIcon
 } from '../../icons.jsx'
 
-const successStyle = {
-  background: 'rgba(34, 197, 94, 0.12)',
-  color: '#16a34a',
-  border: '1px solid rgba(34, 197, 94, 0.3)'
-}
-
 export default function Categories({ navigate }) {
   useDocumentMeta({ title: '分类管理', siteTitle: '管理后台' })
+  const toast = useToast()
 
   const [categories, setCategories] = useState([])
   const [newName, setNewName] = useState('')
   const [editingName, setEditingName] = useState(null)
   const [editValue, setEditValue] = useState('')
-  const [error, setError] = useState('')
-  const [notice, setNotice] = useState('')
 
   const reload = useCallback(() => {
     setCategories(DataStore.Categories.getWithCounts())
@@ -33,23 +27,19 @@ export default function Categories({ navigate }) {
     e.preventDefault()
     const n = newName.trim()
     if (!n) return
-    setError('')
-    setNotice('')
     try {
       DataStore.Categories.add(n)
       setNewName('')
       reload()
-      setNotice(`已添加分类「${n}」`)
+      toast.success(`已添加分类「${n}」`)
     } catch (err) {
-      setError(err.message || '添加失败')
+      toast.error(err.message || '添加失败')
     }
   }
 
   const startEdit = (name) => {
     setEditingName(name)
     setEditValue(name)
-    setError('')
-    setNotice('')
   }
 
   const cancelEdit = () => {
@@ -60,22 +50,21 @@ export default function Categories({ navigate }) {
   const saveEdit = (oldName) => {
     const n = editValue.trim()
     if (!n) {
-      setError('分类名不能为空')
+      toast.error('分类名不能为空')
       return
     }
-    setError('')
     try {
       DataStore.Categories.rename(oldName, n)
       setEditingName(null)
       setEditValue('')
       reload()
-      setNotice(
-        oldName === n
-          ? `分类「${n}」未变更`
-          : `已将「${oldName}」重命名为「${n}」,关联文章已同步更新`
-      )
+      if (oldName === n) {
+        toast.info(`分类「${n}」未变更`)
+      } else {
+        toast.success(`已将「${oldName}」重命名为「${n}」,关联文章已同步更新`)
+      }
     } catch (err) {
-      setError(err.message || '重命名失败')
+      toast.error(err.message || '重命名失败')
     }
   }
 
@@ -89,19 +78,17 @@ export default function Categories({ navigate }) {
       ? `确定删除分类「${name}」?\n该分类下共有 ${affected} 篇文章,删除后将自动移动到「未分类」。`
       : `确定删除分类「${name}」?此操作不可恢复。`
     if (!window.confirm(msg)) return
-    setError('')
-    setNotice('')
     try {
       DataStore.Categories.delete(name)
       if (editingName === name) cancelEdit()
       reload()
-      setNotice(
-        affected > 0
-          ? `已删除分类「${name}」,${affected} 篇文章已移至「未分类」`
-          : `已删除分类「${name}」`
-      )
+      if (affected > 0) {
+        toast.success(`已删除分类「${name}」,${affected} 篇文章已移至「未分类」`)
+      } else {
+        toast.success(`已删除分类「${name}」`)
+      }
     } catch (err) {
-      setError(err.message || '删除失败')
+      toast.error(err.message || '删除失败')
     }
   }
 
@@ -120,9 +107,6 @@ export default function Categories({ navigate }) {
           ← 返回后台
         </button>
       </div>
-
-      {error && <div className="alert alert-error">{error}</div>}
-      {notice && <div className="alert" style={successStyle}>{notice}</div>}
 
       <form className="category-add-form" onSubmit={onAdd} style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
         <input

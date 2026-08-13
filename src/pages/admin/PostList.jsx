@@ -38,15 +38,13 @@ export default function PostList({ navigate }) {
   const [categoryFilter, setCategoryFilter] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [currentPage, setCurrentPage] = useState(1)
-  const [error, setError] = useState('')
 
   const reload = () => {
     try {
       setPosts(DataStore.Posts.getAll({ includeUnpublished: true }))
       setCategories(DataStore.Categories.getAll())
-      setError('')
     } catch (err) {
-      setError(err.message || '加载失败')
+      toast.error(err.message || '加载失败')
     }
   }
 
@@ -118,8 +116,6 @@ export default function PostList({ navigate }) {
           <PlusIcon size={16} /> 写新文章
         </button>
       </div>
-
-      {error && <div className="alert alert-error">{error}</div>}
 
       <div
         className="post-list-toolbar"

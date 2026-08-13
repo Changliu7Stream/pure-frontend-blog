@@ -2,39 +2,39 @@ import { useState } from 'react'
 import { login, isAdminConfigured, setupAdmin } from '../auth.js'
 import { useDocumentMeta } from '../useDocumentMeta.js'
 import { LoginIcon, SettingsIcon } from '../icons.jsx'
+import { useToast } from '../components/Toast.jsx'
 
 export default function AdminLogin({ navigate }) {
   useDocumentMeta({ title: '管理员登录', siteTitle: '管理后台' })
+  const toast = useToast()
 
   const configured = isAdminConfigured()
   const [mode, setMode] = useState(configured ? 'login' : 'setup')
 
   // 登录表单
   const [password, setPassword] = useState('')
-  const [loginError, setLoginError] = useState('')
   const [logging, setLogging] = useState(false)
 
   // 设置表单
   const [username, setUsername] = useState('')
   const [setupPassword, setSetupPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
-  const [setupError, setSetupError] = useState('')
+  const [setupFieldError, setSetupFieldError] = useState('')
   const [setting, setSetting] = useState(false)
 
   const onLogin = async (e) => {
     e.preventDefault()
-    setLoginError('')
     setLogging(true)
     try {
       const ok = await login(password)
       if (ok) {
         navigate('/admin')
       } else {
-        setLoginError('密码错误,请重试。')
+        toast.error('密码错误,请重试。')
         setPassword('')
       }
     } catch (err) {
-      setLoginError(err.message || '登录失败')
+      toast.error(err.message || '登录失败')
     } finally {
       setLogging(false)
     }
@@ -42,11 +42,11 @@ export default function AdminLogin({ navigate }) {
 
   const onSetup = async (e) => {
     e.preventDefault()
-    setSetupError('')
-    if (!username.trim()) { setSetupError('请输入管理员用户名'); return }
-    if (!setupPassword) { setSetupError('请输入密码'); return }
-    if (setupPassword.length < 6) { setSetupError('密码长度至少 6 位'); return }
-    if (setupPassword !== confirmPassword) { setSetupError('两次输入的密码不一致'); return }
+    setSetupFieldError('')
+    if (!username.trim()) { setSetupFieldError('请输入管理员用户名'); return }
+    if (!setupPassword) { setSetupFieldError('请输入密码'); return }
+    if (setupPassword.length < 6) { setSetupFieldError('密码长度至少 6 位'); return }
+    if (setupPassword !== confirmPassword) { setSetupFieldError('两次输入的密码不一致'); return }
     setSetting(true)
     try {
       await setupAdmin({ username, password: setupPassword })
@@ -55,10 +55,10 @@ export default function AdminLogin({ navigate }) {
       if (ok) {
         navigate('/admin')
       } else {
-        setSetupError('登录失败,请重试')
+        toast.error('登录失败,请重试')
       }
     } catch (err) {
-      setSetupError(err.message || '设置失败')
+      toast.error(err.message || '设置失败')
     } finally {
       setSetting(false)
     }
@@ -108,7 +108,7 @@ export default function AdminLogin({ navigate }) {
               required
             />
           </label>
-          {setupError && <div className="alert alert-error">{setupError}</div>}
+          {setupFieldError && <div className="alert alert-error">{setupFieldError}</div>}
           <button type="submit" className="btn btn-primary btn-block" disabled={setting}>
             {setting ? '设置中…' : '完成设置并登录'}
           </button>
@@ -141,7 +141,6 @@ export default function AdminLogin({ navigate }) {
             required
           />
         </label>
-        {loginError && <div className="alert alert-error">{loginError}</div>}
         <button type="submit" className="btn btn-primary btn-block" disabled={logging}>登录</button>
         <button type="button" className="btn btn-link" onClick={() => navigate('/')}>
           返回首页

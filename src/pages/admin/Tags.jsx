@@ -1,15 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { DataStore } from '../../datastore.js'
 import { useDocumentMeta } from '../../useDocumentMeta.js'
+import { useToast } from '../../components/Toast.jsx'
 import {
   EditIcon, TrashIcon, MergeIcon, TagIcon, CheckIcon, XIcon
 } from '../../icons.jsx'
-
-const successStyle = {
-  background: 'rgba(34, 197, 94, 0.12)',
-  color: '#16a34a',
-  border: '1px solid rgba(34, 197, 94, 0.3)'
-}
 
 // 标签云字号区间
 const MIN_FONT = 13
@@ -17,14 +12,13 @@ const MAX_FONT = 26
 
 export default function Tags({ navigate }) {
   useDocumentMeta({ title: '标签管理', siteTitle: '管理后台' })
+  const toast = useToast()
 
   const [tags, setTags] = useState([])
   const [editingName, setEditingName] = useState(null)
   const [editValue, setEditValue] = useState('')
   const [mergeSource, setMergeSource] = useState('')
   const [mergeTarget, setMergeTarget] = useState('')
-  const [error, setError] = useState('')
-  const [notice, setNotice] = useState('')
 
   const reload = useCallback(() => {
     setTags(DataStore.Tags.getAll())
@@ -49,8 +43,6 @@ export default function Tags({ navigate }) {
   const startEdit = (name) => {
     setEditingName(name)
     setEditValue(name)
-    setError('')
-    setNotice('')
   }
 
   const cancelEdit = () => {
@@ -61,22 +53,21 @@ export default function Tags({ navigate }) {
   const saveEdit = (oldName) => {
     const n = editValue.trim()
     if (!n) {
-      setError('标签名不能为空')
+      toast.error('标签名不能为空')
       return
     }
-    setError('')
     try {
       DataStore.Tags.rename(oldName, n)
       setEditingName(null)
       setEditValue('')
       reload()
-      setNotice(
-        oldName === n
-          ? `标签「${n}」未变更`
-          : `已将标签「${oldName}」重命名为「${n}」,所有相关文章已更新`
-      )
+      if (oldName === n) {
+        toast.info(`标签「${n}」未变更`)
+      } else {
+        toast.success(`已将标签「${oldName}」重命名为「${n}」,所有相关文章已更新`)
+      }
     } catch (err) {
-      setError(err.message || '重命名失败')
+      toast.error(err.message || '重命名失败')
     }
   }
 
@@ -87,21 +78,19 @@ export default function Tags({ navigate }) {
       ? `确定删除标签「${name}」?\n该标签被 ${affected} 篇文章使用,删除后将从这些文章中移除。`
       : `确定删除标签「${name}」?此操作不可恢复。`
     if (!window.confirm(msg)) return
-    setError('')
-    setNotice('')
     try {
       DataStore.Tags.delete(name)
       if (editingName === name) cancelEdit()
       if (mergeSource === name) setMergeSource('')
       if (mergeTarget === name) setMergeTarget('')
       reload()
-      setNotice(
-        affected > 0
-          ? `已删除标签「${name}」,已从 ${affected} 篇文章中移除`
-          : `已删除标签「${name}」`
-      )
+      if (affected > 0) {
+        toast.success(`已删除标签「${name}」,已从 ${affected} 篇文章中移除`)
+      } else {
+        toast.success(`已删除标签「${name}」`)
+      }
     } catch (err) {
-      setError(err.message || '删除失败')
+      toast.error(err.message || '删除失败')
     }
   }
 
@@ -109,11 +98,11 @@ export default function Tags({ navigate }) {
     const s = mergeSource.trim()
     const t = mergeTarget.trim()
     if (!s || !t) {
-      setError('请选择源标签和目标标签')
+      toast.error('请选择源标签和目标标签')
       return
     }
     if (s === t) {
-      setError('源标签与目标标签不能相同')
+      toast.error('源标签与目标标签不能相同')
       return
     }
     const sourceItem = tags.find((x) => x.name === s)
@@ -121,16 +110,14 @@ export default function Tags({ navigate }) {
     const msg = `确定将标签「${s}」合并到「${t}」?\n`
       + `共 ${affected} 篇文章中的「${s}」标签将被替换为「${t}」(已包含「${t}」的文章将仅移除「${s}」)。`
     if (!window.confirm(msg)) return
-    setError('')
-    setNotice('')
     try {
       DataStore.Tags.merge(s, t)
       setMergeSource('')
       setMergeTarget('')
       reload()
-      setNotice(`已将标签「${s}」合并到「${t}」,所有相关文章已更新`)
+      toast.success(`已将标签「${s}」合并到「${t}」,所有相关文章已更新`)
     } catch (err) {
-      setError(err.message || '合并失败')
+      toast.error(err.message || '合并失败')
     }
   }
 
@@ -149,9 +136,6 @@ export default function Tags({ navigate }) {
           ← 返回后台
         </button>
       </div>
-
-      {error && <div className="alert alert-error">{error}</div>}
-      {notice && <div className="alert" style={successStyle}>{notice}</div>}
 
       {/* 标签云 */}
       <section style={{ marginBottom: 24 }}>

@@ -57,7 +57,7 @@ export default function Comments({ navigate }) {
   const [filter, setFilter] = useState('all')
   const [replyingId, setReplyingId] = useState(null)
   const [replyText, setReplyText] = useState('')
-  const [error, setError] = useState('')
+  const [fieldError, setFieldError] = useState('')
 
   const reload = () => {
     setComments(DataStore.Comments.getAll())
@@ -107,23 +107,23 @@ export default function Comments({ navigate }) {
   const startReply = (comment) => {
     setReplyingId(comment.id)
     setReplyText(comment.reply || '')
-    setError('')
+    setFieldError('')
   }
 
   const cancelReply = () => {
     setReplyingId(null)
     setReplyText('')
-    setError('')
+    setFieldError('')
   }
 
   const submitReply = (id) => {
-    if (!replyText.trim()) { setError('请输入回复内容'); return }
+    if (!replyText.trim()) { setFieldError('请输入回复内容'); return }
     try {
       DataStore.Comments.reply(id, replyText)
       cancelReply()
       reload()
     } catch (err) {
-      setError(err.message || '回复失败')
+      toast.error(err.message || '回复失败')
     }
   }
 
@@ -266,7 +266,7 @@ export default function Comments({ navigate }) {
                       onChange={(e) => setReplyText(e.target.value)}
                       placeholder="输入回复内容…"
                     />
-                    {error && <div className="alert alert-error">{error}</div>}
+                    {fieldError && <div className="alert alert-error">{fieldError}</div>}
                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                       <button
                         type="button"
