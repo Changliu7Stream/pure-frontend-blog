@@ -31,6 +31,7 @@ jobs:
         run: npm run build
         env:
           CI: true
+          VITE_ADMIN_PASSWORD: ${{ secrets.VITE_ADMIN_PASSWORD }}
 
       - name: Add SPA 404 fallback
         run: cp dist/index.html dist/404.html
