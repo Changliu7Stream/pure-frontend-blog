@@ -53,7 +53,7 @@ export default function Home({ navigate, initialQuery }) {
 
   return (
     <div className="home">
-      <section className="hero hero-compact">
+      <section className="hero hero-compact" style={{ display: settings.heroEnabled === false ? 'none' : '' }}>
         <h1>欢迎来到 {siteTitle}</h1>
         <p>{settings.subtitle || '收录技术与生活随笔'}</p>
       </section>

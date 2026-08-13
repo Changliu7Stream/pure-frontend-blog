@@ -23,6 +23,7 @@ const EMPTY_FORM = {
   logo: '',
   logoData: '',
   footer: '',
+  heroEnabled: true,
   commentEnabled: false,
   commentNeedReview: false,
   themeColors: { primary: '#3B82F6', accent: '#6366F1' }
@@ -140,6 +141,7 @@ export default function Settings({ navigate }) {
         logo: (form.logo || '').trim(),
         logoData: form.logoData || '',
         footer: form.footer || '',
+        heroEnabled: !!form.heroEnabled,
         commentEnabled: !!form.commentEnabled,
         commentNeedReview: form.commentEnabled ? !!form.commentNeedReview : false,
         themeColors
@@ -223,6 +225,14 @@ export default function Settings({ navigate }) {
                 placeholder="版权信息或备案号"
               />
             </label>
+            <div className="form-checkbox col-span-2">
+              <input
+                type="checkbox"
+                checked={!!form.heroEnabled}
+                onChange={(e) => update('heroEnabled', e.target.checked)}
+              />
+              <span>首页显示 Hero 欢迎区域</span>
+            </div>
           </div>
         </section>
 

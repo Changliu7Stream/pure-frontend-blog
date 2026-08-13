@@ -1706,18 +1706,28 @@ html.dark .logo-preview-img {
   max-width: 200px;
 }
 
-/* --------------- Toast 通知 (毛玻璃渐变 · 右上角弹出) --------------- */
+/* --------------- Toast 通知 (毛玻璃渐变 · 右上角弹出 · 层叠覆盖) --------------- */
 .toast-container {
   position: fixed;
   top: 76px;
   right: 20px;
   z-index: 9999;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
   pointer-events: none;
   max-width: 380px;
   width: 380px;
+}
+
+.toast-wrapper {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  pointer-events: auto;
+  transition: opacity 0.25s ease;
+}
+
+.toast-container .toast {
+  position: relative;
 }
 
 .toast {
@@ -1912,6 +1922,7 @@ html.dark .toast-close:hover {
 
 @media (max-width: 768px) {
   .toast-container { left: 12px; right: 12px; max-width: none; width: auto; top: 72px; }
+  .toast-wrapper { left: 0; right: 0; }
   .toast { padding: 12px 14px; font-size: 13px; }
   .toast-icon { width: 28px; height: 28px; }
 }

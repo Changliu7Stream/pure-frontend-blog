@@ -24,6 +24,7 @@ const DEFAULT_SETTINGS = {
   logo: '',
   logoData: '',
   footer: '纯前端博客 · localStorage 本地存储 · React + Vite',
+  heroEnabled: true,
   commentEnabled: true,
   commentNeedReview: true,
   themeColors: {
