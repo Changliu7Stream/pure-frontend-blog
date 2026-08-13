@@ -175,7 +175,7 @@ export default function Navbar({ siteTitle, authed, navigate, currentPath }) {
               <SearchIcon size={20} />
             </button>
 
-            {/* 下拉搜索面板 */}
+            {/* 下拉搜索面板 (桌面端下拉 / 移动端全屏覆盖) */}
             {searchOpen && (
               <div className="nav-search-dropdown">
                 <div className="nav-search-input-wrap">
@@ -189,6 +189,15 @@ export default function Navbar({ siteTitle, authed, navigate, currentPath }) {
                     onChange={(e) => setSearchQuery(e.target.value)}
                     onKeyDown={onSearchKeyDown}
                   />
+                  {/* 移动端关闭按钮 */}
+                  <button
+                    type="button"
+                    className="nav-search-close-btn"
+                    onClick={() => { setSearchOpen(false); setSearchQuery('') }}
+                    aria-label="关闭搜索"
+                  >
+                    <XIcon size={18} />
+                  </button>
                 </div>
 
                 {searchQuery.trim() && (
