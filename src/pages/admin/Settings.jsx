@@ -209,14 +209,6 @@ export default function Settings({ navigate }) {
                 placeholder="版权信息或备案号"
               />
             </label>
-            <div className="form-checkbox col-span-2">
-              <input
-                type="checkbox"
-                checked={!!form.heroEnabled}
-                onChange={(e) => update('heroEnabled', e.target.checked)}
-              />
-              <span>首页显示 Hero 欢迎区域</span>
-            </div>
           </div>
         </section>
 
@@ -386,6 +378,24 @@ export default function Settings({ navigate }) {
               />
               <span>评论需要审核后才显示</span>
             </label>
+          )}
+        </section>
+
+        {/* ============ 首页展示卡片 ============ */}
+        <section className="settings-card">
+          <h3 className="settings-card-title">首页展示</h3>
+          <label className="form-checkbox">
+            <input
+              type="checkbox"
+              checked={!!form.heroEnabled}
+              onChange={(e) => update('heroEnabled', e.target.checked)}
+            />
+            <span>显示顶部欢迎横幅 (Hero 区域)</span>
+          </label>
+          {!form.heroEnabled && (
+            <p className="muted small" style={{ marginTop: 4, paddingLeft: 28 }}>
+              关闭后首页将直接显示分类、标签和文章列表。
+            </p>
           )}
         </section>
 
