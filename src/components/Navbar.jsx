@@ -7,10 +7,6 @@ import {
   MenuIcon, XIcon, LayersIcon, SearchIcon
 } from '../icons.jsx'
 
-/**
- * 优先级搜索: 标题匹配 > 标签匹配 > 正文匹配
- * 返回最多 limit 条结果,每条带 score 用于排序
- */
 function searchPosts(posts, keyword, limit = 5) {
   const k = String(keyword || '').trim().toLowerCase()
   if (!k) return []
@@ -40,44 +36,34 @@ export default function Navbar({ siteTitle, authed, navigate, currentPath }) {
   const isDark = theme === THEMES.DARK
   const [menuOpen, setMenuOpen] = useState(false)
 
-  // 读取 settings 获取 logo (logoData 优先, 否则 logo URL)
   const settings = DataStore.Settings.get()
   const logoSrc = settings?.logoData || settings?.logo || ''
   const displaySiteTitle = (settings?.blogName && settings.blogName.trim()) || siteTitle || '语客'
 
-  // ---- 搜索状态 ----
   const [searchOpen, setSearchOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const searchRef = useRef(null)
   const searchInputRef = useRef(null)
 
-  // 读取已发布的独立页面 (导航栏显示)
   const pages = DataStore.Pages.getPublished()
-
-  // 所有已发布文章 (搜索数据源)
   const allPosts = useMemo(() => DataStore.Posts.getAll(), [currentPath])
 
-  // 搜索结果
   const searchResults = useMemo(() => {
     return searchPosts(allPosts, searchQuery, 5)
   }, [allPosts, searchQuery])
 
-  // 点击搜索图标: 切换展开/收起
   const toggleSearch = () => {
     setSearchOpen((prev) => {
       const next = !prev
       if (next) {
-        // 展开时聚焦输入框
         setTimeout(() => searchInputRef.current?.focus(), 50)
       } else {
-        // 收起时清空
         setSearchQuery('')
       }
       return next
     })
   }
 
-  // 点击外部区域收起搜索
   useEffect(() => {
     if (!searchOpen) return
     const handleClickOutside = (e) => {
@@ -90,7 +76,6 @@ export default function Navbar({ siteTitle, authed, navigate, currentPath }) {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [searchOpen])
 
-  // 按 Esc 收起搜索
   useEffect(() => {
     if (!searchOpen) return
     const onKeydown = (e) => {
@@ -104,7 +89,6 @@ export default function Navbar({ siteTitle, authed, navigate, currentPath }) {
     return () => document.removeEventListener('keydown', onKeydown)
   }, [searchOpen])
 
-  // 路由变化时收起搜索
   useEffect(() => {
     setSearchOpen(false)
     setSearchQuery('')
@@ -123,7 +107,6 @@ export default function Navbar({ siteTitle, authed, navigate, currentPath }) {
 
   const onSearchKeyDown = (e) => {
     if (e.key === 'Enter' && searchResults.length > 0) {
-      // 回车跳转到第一个结果
       onSearchResultClick(searchResults[0])
     }
   }
@@ -147,23 +130,24 @@ export default function Navbar({ siteTitle, authed, navigate, currentPath }) {
   return (
     <header className="navbar">
       <div className="container navbar-inner">
-        <a href="#/" className="brand" onClick={(e) => { e.preventDefault(); navigate('/') }}>
-          {logoSrc ? (
-            <img
-              src={logoSrc}
-              alt=""
-              className="brand-logo"
-              width={32}
-              height={32}
-              loading="eager"
-              onError={(e) => { e.currentTarget.style.display = 'none' }}
-            />
-          ) : null}
-          <span className="brand-text">{displaySiteTitle}</span>
-        </a>
+        {/* 左侧：品牌 + 搜索 (桌面端内联) */}
+        <div className="nav-left">
+          <a href="#/" className="brand" onClick={(e) => { e.preventDefault(); navigate('/') }}>
+            {logoSrc ? (
+              <img
+                src={logoSrc}
+                alt=""
+                className="brand-logo"
+                width={32}
+                height={32}
+                loading="eager"
+                onError={(e) => { e.currentTarget.style.display = 'none' }}
+              />
+            ) : null}
+            <span className="brand-text">{displaySiteTitle}</span>
+          </a>
 
-        <div className="nav-right-group">
-          {/* 搜索图标 + 下拉面板 */}
+          {/* 搜索框 - 桌面端内联 / 移动端下拉 */}
           <div className="nav-search-wrapper" ref={searchRef}>
             <button
               type="button"
@@ -175,7 +159,7 @@ export default function Navbar({ siteTitle, authed, navigate, currentPath }) {
               <SearchIcon size={20} />
             </button>
 
-            {/* 下拉搜索面板 (桌面端下拉 / 移动端全屏覆盖) */}
+            {/* 展开的搜索区域 - 桌面端内联展开 / 移动端全屏覆盖 */}
             {searchOpen && (
               <div className="nav-search-dropdown">
                 <div className="nav-search-input-wrap">
@@ -189,7 +173,6 @@ export default function Navbar({ siteTitle, authed, navigate, currentPath }) {
                     onChange={(e) => setSearchQuery(e.target.value)}
                     onKeyDown={onSearchKeyDown}
                   />
-                  {/* 移动端关闭按钮 */}
                   <button
                     type="button"
                     className="nav-search-close-btn"
@@ -224,7 +207,10 @@ export default function Navbar({ siteTitle, authed, navigate, currentPath }) {
               </div>
             )}
           </div>
+        </div>
 
+        {/* 右侧：导航链接 + 菜单按钮 (移动端) */}
+        <div className="nav-right-group">
           <button
             className="nav-menu-toggle"
             onClick={() => setMenuOpen(!menuOpen)}
@@ -234,6 +220,7 @@ export default function Navbar({ siteTitle, authed, navigate, currentPath }) {
           </button>
         </div>
 
+        {/* 导航链接 - 桌面端/移动端共用 */}
         <nav className={`nav-links ${menuOpen ? 'open' : ''}`}>
           {navLink('/', '首页', <HomeIcon size={16} />)}
           {navLink('/archive', '归档', <ArchiveIcon size={16} />)}
