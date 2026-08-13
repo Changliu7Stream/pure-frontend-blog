@@ -246,6 +246,8 @@ export const MenuIcon = makeIcon(
   </>
 )
 
+export const ChevronDownIcon = makeIcon(<polyline points="6 9 12 15 18 9" />)
+
 export const PenIcon = makeIcon(
   <>
     <path d="M12 19l7-7 3 3-7 7-3-3z" />

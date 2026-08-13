@@ -280,6 +280,21 @@ const Pages = {
     return this.getAll().filter((p) => p.published)
   },
 
+  // 获取已发布的顶级页面 (无 parentId)
+  getPublishedTopLevel() {
+    return this.getPublished().filter((p) => !p.parentId)
+  },
+
+  // 获取某个页面的已发布子页面
+  getChildren(parentId) {
+    return this.getPublished().filter((p) => p.parentId === Number(parentId))
+  },
+
+  // 获取某个页面的所有子页面 (含未发布)
+  getAllChildren(parentId) {
+    return this.getAll().filter((p) => p.parentId === Number(parentId))
+  },
+
   create(data) {
     const all = readJSON(KEYS.PAGES, [])
     const now = Date.now()
@@ -291,6 +306,7 @@ const Pages = {
       content: data.content || '',
       contentFormat: data.contentFormat || 'html',
       published: data.published !== false,
+      parentId: data.parentId ? Number(data.parentId) : null,
       createdAt: now,
       updatedAt: now
     }
@@ -306,6 +322,13 @@ const Pages = {
     if (patch.title && patch.title !== all[idx].title) {
       patch.slug = ensureUniqueSlug(slugify(patch.title), all[idx].id, all)
     }
+    if (patch.parentId !== undefined) {
+      patch.parentId = patch.parentId ? Number(patch.parentId) : null
+      // 不能将自己设为父页面
+      if (patch.parentId === all[idx].id) {
+        throw new Error('不能将页面设为自身的子页面')
+      }
+    }
     all[idx] = { ...all[idx], ...patch, updatedAt: Date.now() }
     writeJSON(KEYS.PAGES, all)
     return all[idx]
@@ -313,7 +336,12 @@ const Pages = {
 
   delete(id) {
     const all = readJSON(KEYS.PAGES, [])
-    writeJSON(KEYS.PAGES, all.filter((p) => p.id !== Number(id)))
+    const deletedId = Number(id)
+    // 删除页面时,其子页面提升为顶级页面
+    const updated = all
+      .filter((p) => p.id !== deletedId)
+      .map((p) => p.parentId === deletedId ? { ...p, parentId: null } : p)
+    writeJSON(KEYS.PAGES, updated)
   },
 
   togglePublished(id) {

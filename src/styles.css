@@ -208,6 +208,75 @@ body {
   border-color: var(--primary);
 }
 
+/* --------------- 导航下拉子页面菜单 --------------- */
+.nav-dropdown {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+.nav-dropdown-arrow {
+  margin-left: 2px;
+  opacity: 0.6;
+  transition: transform 0.2s;
+}
+.nav-dropdown:hover .nav-dropdown-arrow {
+  transform: rotate(180deg);
+}
+.nav-dropdown-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  min-width: 180px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.12);
+  z-index: 100;
+  padding: 4px;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-4px);
+  transition: opacity 0.18s, transform 0.18s, visibility 0.18s;
+}
+.nav-dropdown:hover .nav-dropdown-menu {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+.nav-dropdown-item {
+  display: block;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 14px;
+  color: var(--text-muted);
+  text-decoration: none;
+  transition: background 0.15s, color 0.15s;
+  white-space: nowrap;
+}
+.nav-dropdown-item:hover {
+  background: var(--surface-2);
+  color: var(--text);
+}
+.nav-dropdown-item.active {
+  color: var(--primary);
+  background: var(--primary-soft);
+}
+
+/* 子页面表格行缩进 */
+.sub-page-row {
+  background: var(--surface-2);
+}
+.page-tree-indent {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.sub-page-arrow {
+  color: var(--text-muted);
+  font-size: 14px;
+  margin-right: 2px;
+}
+
 /* --------------- Hero + 搜索框 --------------- */
 .hero {
   background: linear-gradient(135deg, var(--primary) 0%, #6366f1 100%);
@@ -2443,4 +2512,35 @@ html.dark .toast-close:hover {
   .manual-action { flex-direction: column; align-items: stretch; }
   .manual-action .btn { width: 100%; }
   .modal-box { padding: 20px; }
+  /* 移动端: 子页面下拉菜单改为内联展开 */
+  .nav-dropdown {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+  }
+  .nav-dropdown > .nav-link {
+    width: 100%;
+  }
+  .nav-dropdown-arrow {
+    margin-left: auto;
+  }
+  .nav-dropdown-menu {
+    position: static;
+    opacity: 1;
+    visibility: visible;
+    transform: none;
+    box-shadow: none;
+    border: none;
+    border-radius: 0;
+    background: var(--surface-2);
+    padding: 0 0 0 16px;
+    transition: none;
+  }
+  .nav-dropdown-item {
+    padding: 12px 14px;
+    border-radius: 0;
+    border-top: 1px solid var(--border);
+    font-size: 14px;
+  }
 }

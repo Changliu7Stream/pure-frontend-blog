@@ -6,18 +6,18 @@ import { useDocumentMeta } from '../../useDocumentMeta.js'
 import { formatDate } from '../../utils.js'
 import {
   PlusIcon, EditIcon, TrashIcon, SaveIcon, XIcon,
-  GlobeIcon, EyeOffIcon
+  GlobeIcon, EyeOffIcon, ChevronDownIcon
 } from '../../icons.jsx'
 import { useToast } from '../../components/Toast.jsx'
 
-const EMPTY_FORM = { title: '', content: '', contentFormat: 'html', published: true }
+const EMPTY_FORM = { title: '', content: '', contentFormat: 'html', published: true, parentId: null }
 
 export default function Pages({ navigate }) {
   useDocumentMeta({ title: '页面管理', siteTitle: '管理后台' })
   const toast = useToast()
 
   const [pages, setPages] = useState([])
-  // null = 列表模式; 'new' = 新建; pageId = 编辑该页面
+  // null = 列表模式; 'new' = 新建; 'newSub' = 新建子页面; pageId = 编辑该页面
   const [editing, setEditing] = useState(null)
   const [form, setForm] = useState(EMPTY_FORM)
   const [fieldError, setFieldError] = useState('')
@@ -37,14 +37,20 @@ export default function Pages({ navigate }) {
     setFieldError('')
   }
 
+  const startNewSub = (parentPage) => {
+    setForm({ ...EMPTY_FORM, parentId: parentPage.id })
+    setEditing('newSub')
+    setFieldError('')
+  }
+
   const startEdit = (page) => {
-    // 取最新数据,避免列表快照过期
     const latest = DataStore.Pages.getById(page.id) || page
     setForm({
       title: latest.title || '',
       content: latest.content || '',
       contentFormat: latest.contentFormat === 'markdown' ? 'markdown' : 'html',
-      published: latest.published !== false
+      published: latest.published !== false,
+      parentId: latest.parentId || null
     })
     setEditing(latest.id)
     setFieldError('')
@@ -67,15 +73,17 @@ export default function Pages({ navigate }) {
         title: form.title.trim(),
         content: form.content,
         contentFormat: form.contentFormat,
-        published: form.published
+        published: form.published,
+        parentId: form.parentId || null
       }
-      if (editing === 'new') {
+      if (editing === 'new' || editing === 'newSub') {
         DataStore.Pages.create(payload)
       } else {
         DataStore.Pages.update(editing, payload)
       }
       reload()
       cancelEdit()
+      toast.success(editing === 'new' ? '页面已创建' : editing === 'newSub' ? '子页面已创建' : '页面已更新')
     } catch (err) {
       toast.error(err.message || '保存失败')
     } finally {
@@ -93,11 +101,16 @@ export default function Pages({ navigate }) {
   }
 
   const onDelete = (page) => {
-    if (!window.confirm(`确定删除页面《${page.title}》?此操作不可恢复。`)) return
+    const children = DataStore.Pages.getAllChildren(page.id)
+    const msg = children.length > 0
+      ? `确定删除页面《${page.title}》?该页面下有 ${children.length} 个子页面,删除后子页面将提升为顶级页面。此操作不可恢复。`
+      : `确定删除页面《${page.title}》?此操作不可恢复。`
+    if (!window.confirm(msg)) return
     try {
       DataStore.Pages.delete(page.id)
       if (editing === page.id) cancelEdit()
       reload()
+      toast.success('页面已删除')
     } catch (err) {
       toast.error('删除失败: ' + (err.message || err))
     }
@@ -109,12 +122,46 @@ export default function Pages({ navigate }) {
       : '<p class="muted">在左侧输入 Markdown 内容后,这里会显示预览。</p>'
   }, [form.content])
 
+  // 构建分层列表：顶级页面 + 缩进的子页面
+  const flatList = useMemo(() => {
+    const topLevel = pages.filter((p) => !p.parentId)
+    const result = []
+    for (const parent of topLevel) {
+      result.push({ ...parent, _level: 0 })
+      const children = pages.filter((c) => c.parentId === parent.id)
+      for (const child of children) {
+        result.push({ ...child, _level: 1 })
+      }
+    }
+    // 孤儿页面 (parentId 指向不存在的页面)
+    const knownIds = pages.map((p) => p.id)
+    const orphans = pages.filter((p) => p.parentId && !knownIds.includes(p.parentId))
+    for (const orphan of orphans) {
+      result.push({ ...orphan, _level: 0 })
+    }
+    return result
+  }, [pages])
+
+  // 可选的父页面列表 (排除自身和自己的子页面)
+  const parentOptions = useMemo(() => {
+    if (editing === null || editing === 'new') return pages.filter((p) => !p.parentId)
+    const childIds = new Set()
+    const collectChildren = (pid) => {
+      pages.filter((p) => p.parentId === pid).forEach((c) => {
+        childIds.add(c.id)
+        collectChildren(c.id)
+      })
+    }
+    collectChildren(Number(editing))
+    return pages.filter((p) => !p.parentId && p.id !== Number(editing) && !childIds.has(p.id))
+  }, [pages, editing])
+
   return (
     <div className="admin-pages">
       <div className="dashboard-header">
         <div>
           <h2>页面管理</h2>
-          <p className="muted">独立页面 (如"关于"、"友链") · 共 {pages.length} 个</p>
+          <p className="muted">独立页面 (如"关于"、"友链") · 支持子页面 · 共 {pages.length} 个</p>
         </div>
         {editing === null && (
           <button className="btn btn-primary" onClick={startNew}>
@@ -126,7 +173,9 @@ export default function Pages({ navigate }) {
       {editing !== null && (
         <form className="editor-form" onSubmit={onSave}>
           <div className="editor-header">
-            <h2>{editing === 'new' ? '新建页面' : '编辑页面'}</h2>
+            <h2>
+              {editing === 'new' ? '新建页面' : editing === 'newSub' ? '新建子页面' : '编辑页面'}
+            </h2>
           </div>
 
           <label className="form-label">
@@ -182,6 +231,20 @@ export default function Pages({ navigate }) {
               </div>
             </label>
           </div>
+
+          <label className="form-label">
+            父级页面
+            <select
+              className="input"
+              value={form.parentId || ''}
+              onChange={(e) => setForm({ ...form, parentId: e.target.value ? Number(e.target.value) : null })}
+            >
+              <option value="">— 顶级页面 (无父级) —</option>
+              {parentOptions.map((p) => (
+                <option key={p.id} value={p.id}>{p.title}</option>
+              ))}
+            </select>
+          </label>
 
           {form.contentFormat === 'html' ? (
             <div className="editor-pane">
@@ -249,18 +312,21 @@ export default function Pages({ navigate }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {pages.map((page) => (
-                    <tr key={page.id}>
+                  {flatList.map((page) => (
+                    <tr key={page.id} className={page._level === 1 ? 'sub-page-row' : ''}>
                       <td className="cell-title">
-                        <a
-                          href={`#/page/${encodeURIComponent(page.slug)}`}
-                          onClick={(e) => {
-                            e.preventDefault()
-                            navigate(`/page/${encodeURIComponent(page.slug)}`)
-                          }}
-                        >
-                          {page.title}
-                        </a>
+                        <span className="page-tree-indent" style={{ paddingLeft: page._level * 24 }}>
+                          {page._level === 1 && <span className="sub-page-arrow">└</span>}
+                          <a
+                            href={`#/page/${encodeURIComponent(page.slug)}`}
+                            onClick={(e) => {
+                              e.preventDefault()
+                              navigate(`/page/${encodeURIComponent(page.slug)}`)
+                            }}
+                          >
+                            {page.title}
+                          </a>
+                        </span>
                       </td>
                       <td className="muted small">/{page.slug}</td>
                       <td>
@@ -277,6 +343,9 @@ export default function Pages({ navigate }) {
                       </td>
                       <td>{formatDate(page.updatedAt)}</td>
                       <td className="col-actions">
+                        <button className="btn btn-sm" onClick={() => startNewSub(page)} title="创建子页面">
+                          <PlusIcon size={14} /> 子页面
+                        </button>
                         <button className="btn btn-sm" onClick={() => startEdit(page)}>
                           <EditIcon size={14} /> 编辑
                         </button>

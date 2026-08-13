@@ -4,7 +4,7 @@ import { useTheme, THEMES } from '../theme.jsx'
 import { DataStore } from '../datastore.js'
 import {
   HomeIcon, ArchiveIcon, SunIcon, MoonIcon, LogoutIcon, LoginIcon,
-  MenuIcon, XIcon, LayersIcon, SearchIcon
+  MenuIcon, XIcon, LayersIcon, SearchIcon, ChevronDownIcon
 } from '../icons.jsx'
 
 function searchPosts(posts, keyword, limit = 5) {
@@ -46,6 +46,17 @@ export default function Navbar({ siteTitle, authed, navigate, currentPath }) {
   const searchInputRef = useRef(null)
 
   const pages = DataStore.Pages.getPublished()
+  const topLevelPages = useMemo(() => pages.filter((p) => !p.parentId), [pages])
+  const childPagesMap = useMemo(() => {
+    const map = {}
+    for (const p of pages) {
+      if (p.parentId) {
+        if (!map[p.parentId]) map[p.parentId] = []
+        map[p.parentId].push(p)
+      }
+    }
+    return map
+  }, [pages])
   const allPosts = useMemo(() => DataStore.Posts.getAll(), [currentPath])
 
   const searchResults = useMemo(() => {
@@ -224,17 +235,49 @@ export default function Navbar({ siteTitle, authed, navigate, currentPath }) {
         <nav className={`nav-links ${menuOpen ? 'open' : ''}`}>
           {navLink('/', '首页', <HomeIcon size={16} />)}
           {navLink('/archive', '归档', <ArchiveIcon size={16} />)}
-          {pages.map((page) => (
-            <a
-              key={page.id}
-              href={`#/page/${encodeURIComponent(page.slug)}`}
-              className={currentPath === `/page/${page.slug}` ? 'nav-link active' : 'nav-link'}
-              onClick={(e) => { e.preventDefault(); navigate(`/page/${encodeURIComponent(page.slug)}`); setMenuOpen(false) }}
-            >
-              <LayersIcon size={16} />
-              <span>{page.title}</span>
-            </a>
-          ))}
+          {topLevelPages.map((page) => {
+            const children = childPagesMap[page.id] || []
+            const isActive = currentPath === `/page/${page.slug}` ||
+              children.some((c) => currentPath === `/page/${c.slug}`)
+            if (children.length > 0) {
+              return (
+                <div key={page.id} className="nav-dropdown">
+                  <a
+                    href={`#/page/${encodeURIComponent(page.slug)}`}
+                    className={isActive ? 'nav-link active' : 'nav-link'}
+                    onClick={(e) => { e.preventDefault(); navigate(`/page/${encodeURIComponent(page.slug)}`); setMenuOpen(false) }}
+                  >
+                    <LayersIcon size={16} />
+                    <span>{page.title}</span>
+                    <ChevronDownIcon size={14} className="nav-dropdown-arrow" />
+                  </a>
+                  <div className="nav-dropdown-menu">
+                    {children.map((child) => (
+                      <a
+                        key={child.id}
+                        href={`#/page/${encodeURIComponent(child.slug)}`}
+                        className={currentPath === `/page/${child.slug}` ? 'nav-dropdown-item active' : 'nav-dropdown-item'}
+                        onClick={(e) => { e.preventDefault(); navigate(`/page/${encodeURIComponent(child.slug)}`); setMenuOpen(false) }}
+                      >
+                        {child.title}
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )
+            }
+            return (
+              <a
+                key={page.id}
+                href={`#/page/${encodeURIComponent(page.slug)}`}
+                className={currentPath === `/page/${page.slug}` ? 'nav-link active' : 'nav-link'}
+                onClick={(e) => { e.preventDefault(); navigate(`/page/${encodeURIComponent(page.slug)}`); setMenuOpen(false) }}
+              >
+                <LayersIcon size={16} />
+                <span>{page.title}</span>
+              </a>
+            )
+          })}
           {authed ? (
             <>
               {navLink('/admin', '管理后台', null, true)}
