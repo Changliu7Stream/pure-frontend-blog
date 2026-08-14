@@ -3,9 +3,22 @@ import { DataStore } from '../../datastore.js'
 import { useDocumentMeta } from '../../useDocumentMeta.js'
 import { formatDate } from '../../utils.js'
 import {
-  CheckIcon, XIcon, ReplyIcon, TrashIcon, ClockIcon, FileTextIcon, SearchIcon
+  CheckIcon, XIcon, ReplyIcon, TrashIcon, ClockIcon, FileTextIcon, SearchIcon, DownloadIcon, CloudIcon
 } from '../../icons.jsx'
 import { useToast } from '../../components/Toast.jsx'
+
+// 把 textarea 内容解析为屏蔽词数组: 一行一个, 去空 + 去重
+function parseBlacklist(text) {
+  if (!text) return []
+  return Array.from(
+    new Set(
+      text
+        .split(/\r?\n/)
+        .map((w) => w.trim())
+        .filter(Boolean)
+    )
+  )
+}
 
 const FILTERS = [
   { key: 'all', label: '全部' },
@@ -62,6 +75,11 @@ export default function Comments({ navigate }) {
   // 批量选择
   const [selectedIds, setSelectedIds] = useState(() => new Set())
 
+  // 关键词屏蔽管理
+  const [blacklistText, setBlacklistText] = useState('')
+  const [blacklistError, setBlacklistError] = useState('')
+  const [blacklistOpen, setBlacklistOpen] = useState(false)
+
   const reload = () => {
     setComments(DataStore.Comments.getAll())
     setCounts(DataStore.Comments.getCounts())
@@ -69,6 +87,9 @@ export default function Comments({ navigate }) {
 
   useEffect(() => {
     reload()
+    // 同步屏蔽词到本地编辑态
+    const settings = DataStore.Settings.get()
+    setBlacklistText(Array.isArray(settings.commentBlacklist) ? settings.commentBlacklist.join('\n') : '')
   }, [])
 
   // 已发布帖子列表 (供下拉筛选)
@@ -177,6 +198,42 @@ export default function Comments({ navigate }) {
     }
   }
 
+  // ============ 关键词屏蔽 ============
+  const onBlacklistChange = (e) => {
+    const text = e.target.value
+    setBlacklistText(text)
+    const oversize = text.split('\n').find((l) => l.trim().length > 50)
+    if (oversize) {
+      setBlacklistError('关键词长度建议 ≤ 50 字符,过长可能误伤正常评论。')
+    } else {
+      setBlacklistError('')
+    }
+  }
+
+  const handleSaveBlacklist = () => {
+    const list = parseBlacklist(blacklistText)
+    setBlacklistError('')
+    try {
+      const next = DataStore.Settings.update({ commentBlacklist: list })
+      setBlacklistText((next.commentBlacklist || []).join('\n'))
+      toast.success(`已保存 ${list.length} 个屏蔽词。`)
+    } catch (err) {
+      toast.error('保存屏蔽词失败: ' + (err.message || err))
+    }
+  }
+
+  const handleClearBlacklist = () => {
+    if (!window.confirm('确定清空全部屏蔽词?')) return
+    setBlacklistText('')
+    setBlacklistError('')
+    try {
+      DataStore.Settings.update({ commentBlacklist: [] })
+      toast.success('屏蔽词已清空。')
+    } catch (err) {
+      toast.error('清空失败: ' + (err.message || err))
+    }
+  }
+
   const startReply = (comment) => {
     setReplyingId(comment.id)
     setReplyText(comment.reply || '')
@@ -217,6 +274,108 @@ export default function Comments({ navigate }) {
       </div>
 
       {/* 状态筛选 */}
+
+      {/* ============ 关键词屏蔽管理 (可折叠) ============ */}
+      <section
+        className="settings-card"
+        style={{ marginBottom: 14 }}
+      >
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 8,
+            cursor: 'pointer',
+            userSelect: 'none'
+          }}
+          onClick={() => setBlacklistOpen((v) => !v)}
+        >
+          <h3 className="settings-card-title" style={{ margin: 0 }}>
+            <span style={{ marginRight: 6 }}>{blacklistOpen ? '▼' : '▶'}</span>
+            关键词屏蔽管理
+            <span
+              className="muted small"
+              style={{ marginLeft: 10, fontWeight: 400 }}
+            >
+              (已保存 {parseBlacklist(blacklistText).length} 个)
+            </span>
+          </h3>
+          {!blacklistOpen && parseBlacklist(blacklistText).length > 0 && (
+            <span
+              className="tag-pill"
+              style={{
+                background: 'var(--warn-soft)',
+                color: 'var(--warn)',
+                fontSize: 11
+              }}
+            >
+              拦截中
+            </span>
+          )}
+        </div>
+
+        {blacklistOpen && (
+          <div style={{ marginTop: 12 }}>
+            <p className="muted small" style={{ marginTop: 0 }}>
+              访客提交的评论若<strong>内容或昵称</strong>包含下列任一关键词 (大小写不敏感),
+              将直接被拦截且不写入数据库。建议每行一个词,长度不超过 50 字符。
+            </p>
+
+            <textarea
+              className="input"
+              rows={6}
+              value={blacklistText}
+              onChange={onBlacklistChange}
+              placeholder={'一行一个关键词，例如:
+广告
+代刷
+http
+联系微信
+抽奖'}
+              style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: 13 }}
+            />
+
+            <div
+              className="muted small"
+              style={{ marginTop: 6, display: 'flex', gap: 12, flexWrap: 'wrap' }}
+            >
+              <span>
+                当前{' '}
+                <strong style={{ color: 'var(--text)' }}>
+                  {parseBlacklist(blacklistText).length}
+                </strong>{' '}
+                个关键词
+              </span>
+            </div>
+
+            {blacklistError && (
+              <div className="alert alert-warn" style={{ marginTop: 10 }}>
+                {blacklistError}
+              </div>
+            )}
+
+            <div className="btn-row" style={{ marginTop: 12 }}>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={handleSaveBlacklist}
+              >
+                <CheckIcon size={14} /> 保存屏蔽词
+              </button>
+              <button
+                type="button"
+                className="btn btn-danger"
+                onClick={handleClearBlacklist}
+                disabled={parseBlacklist(blacklistText).length === 0}
+              >
+                <TrashIcon size={14} /> 清空全部
+              </button>
+            </div>
+          </div>
+        )}
+      </section>
+
       <div className="segmented" style={{ flexWrap: 'wrap', width: 'max-content' }}>
         {FILTERS.map((f) => {
           const count = f.key === 'all' ? counts.total : counts[f.key]
@@ -272,7 +431,98 @@ export default function Comments({ navigate }) {
         )}
       </div>
 
-      {/* 批量操作工具栏 */}
+      
+{/* ============ 快捷建议 / 功能入口 ============ */}
+<section
+  className="settings-card"
+  style={{ marginBottom: 14 }}
+>
+  <h3 className="settings-card-title">快捷建议</h3>
+  <div
+    style={{
+      display: 'grid',
+      gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+      gap: 10
+    }}
+  >
+    {[
+      {
+        title: '批量清理垃圾评论',
+        desc: '进入「待审」标签，全选后批量删除',
+        icon: <TrashIcon size={16} />,
+        action: () => setFilter('pending')
+      },
+      {
+        title: '导出本地备份',
+        desc: '评论、文章、设置一键导出 JSON',
+        icon: <DownloadIcon size={16} />,
+        action: () => navigate('/admin/backup')
+      },
+      {
+        title: '对象云存储备份',
+        desc: '将备份自动上传到 OSS / COS / R2 / MinIO',
+        icon: <CloudIcon size={16} />,
+        action: () => navigate('/admin/backup')
+      },
+      {
+        title: '启用评论审核',
+        desc: '新评论先进入「待审」，避免垃圾内容',
+        icon: <CheckIcon size={16} />,
+        action: () => navigate('/admin/settings')
+      },
+      {
+        title: '去文章页直接回复',
+        desc: '快速跳转到文章详情页的评论区',
+        icon: <ReplyIcon size={16} />,
+        action: () => {
+          const targetPost = DataStore.Posts.getById(Number(postFilter))
+          if (targetPost?.id) navigate(`/#/post/${targetPost.slug}`)
+        }
+      }
+    ].map((item) => (
+      <button
+        key={item.title}
+        type="button"
+        className="btn"
+        style={{
+          display: 'flex',
+          alignItems: 'flex-start',
+          gap: 10,
+          textAlign: 'left',
+          padding: '12px 14px',
+          background: 'var(--surface)',
+          border: '1px solid var(--border)',
+          borderRadius: 'var(--radius)',
+          boxShadow: 'var(--shadow)',
+          cursor: 'pointer',
+          whiteSpace: 'normal',
+          lineHeight: 1.4
+        }}
+        onClick={item.action}
+      >
+        <span
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginTop: 2,
+            color: 'var(--primary)'
+          }}
+        >
+          {item.icon}
+        </span>
+        <span>
+          <strong style={{ display: 'block', marginBottom: 2, color: 'var(--text)' }}>
+            {item.title}
+          </strong>
+          <span className="muted small" style={{ fontSize: 12 }}>{item.desc}</span>
+        </span>
+      </button>
+    ))}
+  </div>
+</section>
+
+{/* 批量操作工具栏 */}
       <div
         style={{
           display: 'flex',
