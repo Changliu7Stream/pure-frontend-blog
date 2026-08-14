@@ -7,10 +7,20 @@ import {
   AlertTriangleIcon, ServerIcon, TrashIcon
 } from '../../icons.jsx'
 import {
-  saveWebDAVConfig, getWebDAVConfig, clearWebDAVConfig, hasWebDAVConfig,
-  testConnection, uploadFile, listFiles, downloadFile, deleteFile,
-  formatFileSize, formatWebDAVDate, generateBackupFilename
+ saveWebDAVConfig, getWebDAVConfig, clearWebDAVConfig, hasWebDAVConfig,
+ testConnection, uploadFile, listFiles, downloadFile, deleteFile,
+ formatFileSize, formatWebDAVDate, generateBackupFilename
 } from '../../webdav.js'
+import {
+ saveS3Config, getS3Config, clearS3Config, hasS3Config,
+ putObject, getObject, listObjects, deleteObject,
+ generateCloudFilename, formatS3Date
+} from '../../objectStorage.js'
+import {
+ saveS3Config, getS3Config, clearS3Config, hasS3Config,
+ putObject, getObject, listObjects, deleteObject,
+ generateCloudFilename, formatS3Date
+} from '../../objectStorage.js'
 
 function pad2(n) {
   return String(n).padStart(2, '0')
@@ -167,7 +177,174 @@ export default function Backup({ navigate }) {
     }
   }
 
-  const loadCloudFiles = async (url, user, pass) => {
+  
+ // ==================== 对象云存储配置/操作 ====================
+ const [s3Provider, setS3Provider] = useState('')
+ const [s3Region, setS3Region] = useState('')
+ const [s3Endpoint, setS3Endpoint] = useState('')
+ const [s3Bucket, setS3Bucket] = useState('')
+ const [s3AccessKeyId, setS3AccessKeyId] = useState('')
+ const [s3SecretAccessKey, setS3SecretAccessKey] = useState('')
+ const [s3PathPrefix, setS3PathPrefix] = useState('blog-backups')
+ const [s3PublicUrl, setS3PublicUrl] = useState('')
+ const [s3ShowSecret, setS3ShowSecret] = useState(false)
+ const [s3ConfigSaved, setS3ConfigSaved] = useState(false)
+ const [testingS3, setTestingS3] = useState(false)
+ const [backingS3, setBackingS3] = useState(false)
+ const [cloudFilesS3, setCloudFilesS3] = useState([])
+ const [loadingS3, setLoadingS3] = useState(false)
+ const [cloudEmptyS3, setCloudEmptyS3] = useState(false)
+
+ const onTestS3 = async () => {
+  if (!s3Endpoint.trim() || !s3Bucket.trim() || !s3AccessKeyId.trim()) {
+   toast.error('请填写 Endpoint、Bucket 和 AccessKeyId')
+   return
+  }
+  setTestingS3(true)
+  try {
+   const result = await listObjects({
+    endpoint: s3Endpoint, region: s3Region || 'oss-cn-hangzhou', bucket: s3Bucket,
+    accessKeyId: s3AccessKeyId, secretAccessKey: s3SecretAccessKey, pathPrefix: s3PathPrefix
+   })
+   if (result.ok) {
+    toast.success(result.message || '连接成功')
+   } else {
+    toast.error(result.message || '连接失败')
+   }
+  } finally {
+   setTestingS3(false)
+  }
+ }
+
+ const onSaveS3Config = () => {
+  if (!s3Endpoint.trim() || !s3Bucket.trim() || !s3AccessKeyId.trim()) {
+   toast.error('请填写 Endpoint、Bucket 和 AccessKeyId')
+   return
+  }
+  saveS3Config({
+   provider: s3Provider, region: s3Region, endpoint: s3Endpoint, bucket: s3Bucket,
+   accessKeyId: s3AccessKeyId, secretAccessKey: s3SecretAccessKey,
+   pathPrefix: s3PathPrefix || 'blog-backups', publicUrl: s3PublicUrl
+  })
+  setS3ConfigSaved(true)
+  toast.success('对象云存储配置已保存 (密钥已加密存储)')
+ }
+
+ const onClearS3Config = () => {
+  if (!window.confirm('确定清除已保存的对象云存储配置?')) return
+  clearS3Config()
+  setS3Provider('')
+  setS3Region('')
+  setS3Endpoint('')
+  setS3Bucket('')
+  setS3AccessKeyId('')
+  setS3SecretAccessKey('')
+  setS3PathPrefix('blog-backups')
+  setS3PublicUrl('')
+  setS3ConfigSaved(false)
+  setCloudFilesS3([])
+  toast.info('已清除对象云存储配置')
+ }
+
+ const loadS3Files = async () => {
+  const ep = s3Endpoint
+  const bk = s3Bucket
+  const ak = s3AccessKeyId
+  const sk = s3SecretAccessKey
+  const pp = s3PathPrefix || 'blog-backups'
+  if (!ep || !bk || !ak) {
+   setCloudEmptyS3(false)
+   return
+  }
+  setLoadingS3(true)
+  try {
+   const result = await listObjects({
+    endpoint: ep, region: s3Region || 'oss-cn-hangzhou', bucket: bk,
+    accessKeyId: ak, secretAccessKey: sk, pathPrefix: pp
+   })
+   setCloudFilesS3(result.files || [])
+   setCloudEmptyS3((result.files || []).length === 0)
+   if (!result.ok) toast.error(result.message || '获取列表失败')
+  } finally {
+   setLoadingS3(false)
+  }
+ }
+
+ const onBackupToS3 = async () => {
+  if (!s3Endpoint.trim() || !s3Bucket.trim() || !s3AccessKeyId.trim()) {
+   toast.error('请先填写并保存对象云存储配置')
+   return
+  }
+  setBackingS3(true)
+  try {
+   const data = DataStore.Backup.exportAll()
+   const payload = {
+    meta: {
+     version: '2',
+     time: new Date().toISOString(),
+     source: 'pure-frontend-blog',
+     format: 'object-storage-backup'
+    },
+    data: {
+     posts: data.posts || [],
+     pages: data.pages || [],
+     comments: data.comments || [],
+     categories: data.categories || [],
+     settings: data.settings || {}
+    }
+   }
+   const filename = generateCloudFilename()
+   const content = JSON.stringify(payload, null, 2)
+   const result = await putObject({
+    endpoint: s3Endpoint, region: s3Region || 'oss-cn-hangzhou', bucket: s3Bucket,
+    accessKeyId: s3AccessKeyId, secretAccessKey: s3SecretAccessKey,
+    pathPrefix: s3PathPrefix || 'blog-backups', key: filename, content
+   })
+   if (result.ok) {
+    toast.success('备份成功: ' + filename)
+    await loadS3Files()
+   } else {
+    toast.error(result.message || '备份失败')
+   }
+  } catch (err) {
+   toast.error('备份失败: ' + (err.message || err))
+  } finally {
+   setBackingS3(false)
+  }
+ }
+
+ const onS3FileRestoreClick = (filename) => {
+  setCloudRestoreTarget({ filename, source: 's3' })
+  setCloudConfirmText('')
+ }
+
+ const onS3FileDeleteClick = (filename) => {
+  setDeleteTarget({ filename, source: 's3' })
+  setDeleteConfirmText('')
+ }
+
+ const onS3DeleteConfirm = async () => {
+  if (!deleteTarget || deleteTarget.source !== 's3') return
+  const { filename } = deleteTarget
+  try {
+   const result = await deleteObject({
+    endpoint: s3Endpoint, region: s3Region || 'oss-cn-hangzhou', bucket: s3Bucket,
+    accessKeyId: s3AccessKeyId, secretAccessKey: s3SecretAccessKey,
+    pathPrefix: s3PathPrefix || 'blog-backups', key: filename
+   })
+   if (result.ok) {
+    toast.success(result.message)
+    setCloudFilesS3((prev) => prev.filter((f) => f.filename !== filename))
+   } else {
+    toast.error(result.message)
+   }
+  } finally {
+   setDeleteTarget(null)
+   setDeleteConfirmText('')
+  }
+ }
+
+ const loadCloudFiles = async (url, user, pass) => {
     const targetUrl = url || webdavUrl
     const targetUser = user || webdavUser
     const targetPass = pass || webdavPass
