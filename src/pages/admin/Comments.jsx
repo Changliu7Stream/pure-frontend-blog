@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { DataStore } from '../../datastore.js'
 import { useDocumentMeta } from '../../useDocumentMeta.js'
 import { formatDate } from '../../utils.js'
 import {
-  CheckIcon, XIcon, ReplyIcon, TrashIcon, ClockIcon, FileTextIcon
+  CheckIcon, XIcon, ReplyIcon, TrashIcon, ClockIcon, FileTextIcon, SearchIcon
 } from '../../icons.jsx'
 import { useToast } from '../../components/Toast.jsx'
 
@@ -55,9 +55,12 @@ export default function Comments({ navigate }) {
   const [comments, setComments] = useState([])
   const [counts, setCounts] = useState({ total: 0, pending: 0, approved: 0, rejected: 0 })
   const [filter, setFilter] = useState('all')
+  const [postFilter, setPostFilter] = useState('all') // 'all' | postId
   const [replyingId, setReplyingId] = useState(null)
   const [replyText, setReplyText] = useState('')
   const [fieldError, setFieldError] = useState('')
+  // 批量选择
+  const [selectedIds, setSelectedIds] = useState(() => new Set())
 
   const reload = () => {
     setComments(DataStore.Comments.getAll())
@@ -68,9 +71,23 @@ export default function Comments({ navigate }) {
     reload()
   }, [])
 
-  const filtered = filter === 'all'
-    ? comments
-    : comments.filter((c) => c.status === filter)
+  // 已发布帖子列表 (供下拉筛选)
+  const publishedPosts = useMemo(() => {
+    return DataStore.Posts.getAll({ includeUnpublished: false })
+  }, [comments]) // 评论变化时刷新,以便拿到最新文章列表
+
+  // 三重过滤: 状态 / 文章
+  const filtered = useMemo(() => {
+    let list = comments
+    if (filter !== 'all') list = list.filter((c) => c.status === filter)
+    if (postFilter !== 'all') list = list.filter((c) => Number(c.postId) === Number(postFilter))
+    return list
+  }, [comments, filter, postFilter])
+
+  // 切换筛选时清空选择 (避免选了已不可见的项)
+  useEffect(() => {
+    setSelectedIds(new Set())
+  }, [filter, postFilter])
 
   const onApprove = (id) => {
     try {
@@ -98,9 +115,65 @@ export default function Comments({ navigate }) {
         setReplyingId(null)
         setReplyText('')
       }
+      setSelectedIds((prev) => {
+        const next = new Set(prev)
+        next.delete(comment.id)
+        return next
+      })
       reload()
     } catch (err) {
       toast.error('删除失败: ' + (err.message || err))
+    }
+  }
+
+  // ============ 批量选择 ============
+  const toggleSelect = (id) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const visibleIds = useMemo(() => filtered.map((c) => c.id), [filtered])
+  const allVisibleSelected = visibleIds.length > 0 && visibleIds.every((id) => selectedIds.has(id))
+  const someVisibleSelected = visibleIds.some((id) => selectedIds.has(id))
+
+  const toggleSelectAllVisible = () => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (allVisibleSelected) {
+        visibleIds.forEach((id) => next.delete(id))
+      } else {
+        visibleIds.forEach((id) => next.add(id))
+      }
+      return next
+    })
+  }
+
+  const clearSelection = () => setSelectedIds(new Set())
+
+  const onBatchDelete = () => {
+    if (selectedIds.size === 0) return
+    const cnt = selectedIds.size
+    if (!window.confirm(`确定批量删除选中的 ${cnt} 条评论?此操作不可恢复。`)) return
+    try {
+      const result = DataStore.Comments.batchDelete(Array.from(selectedIds))
+      // 退出可能正在进行的回复编辑
+      if (replyingId && selectedIds.has(replyingId)) {
+        setReplyingId(null)
+        setReplyText('')
+      }
+      clearSelection()
+      reload()
+      if (result.deleted > 0) {
+        toast.success(`已删除 ${result.deleted} 条评论${result.missing ? `,${result.missing} 条未找到` : ''}。`)
+      } else {
+        toast.error('未删除任何评论。')
+      }
+    } catch (err) {
+      toast.error('批量删除失败: ' + (err.message || err))
     }
   }
 
@@ -134,10 +207,16 @@ export default function Comments({ navigate }) {
       <div className="dashboard-header">
         <div>
           <h2>评论管理</h2>
-          <p className="muted">共 {counts.total} 条评论 · 待审 {counts.pending} 条</p>
+          <p className="muted">
+            共 {counts.total} 条评论 · 待审 {counts.pending} 条
+            {filtered.length !== comments.length && (
+              <span> · 当前筛选显示 {filtered.length} 条</span>
+            )}
+          </p>
         </div>
       </div>
 
+      {/* 状态筛选 */}
       <div className="segmented" style={{ flexWrap: 'wrap', width: 'max-content' }}>
         {FILTERS.map((f) => {
           const count = f.key === 'all' ? counts.total : counts[f.key]
@@ -154,6 +233,112 @@ export default function Comments({ navigate }) {
         })}
       </div>
 
+      {/* 按文章筛选 */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          flexWrap: 'wrap',
+          margin: '12px 0 8px'
+        }}
+      >
+        <SearchIcon size={14} />
+        <span className="muted small">按文章筛选:</span>
+        <select
+          className="input"
+          style={{ width: 'auto', minWidth: 200, padding: '4px 10px' }}
+          value={postFilter}
+          onChange={(e) => setPostFilter(e.target.value)}
+        >
+          <option value="all">全部文章 ({comments.length})</option>
+          {publishedPosts.map((p) => {
+            const cnt = comments.filter((c) => Number(c.postId) === Number(p.id)).length
+            return (
+              <option key={p.id} value={p.id}>
+                {p.title} ({cnt})
+              </option>
+            )
+          })}
+        </select>
+        {postFilter !== 'all' && (
+          <button
+            type="button"
+            className="btn btn-sm"
+            onClick={() => setPostFilter('all')}
+          >
+            <XIcon size={12} /> 清除筛选
+          </button>
+        )}
+      </div>
+
+      {/* 批量操作工具栏 */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 12,
+          padding: '10px 14px',
+          margin: '4px 0 14px',
+          background: selectedIds.size > 0 ? 'var(--primary-soft)' : 'var(--surface)',
+          border: '1px solid var(--border)',
+          borderRadius: 'var(--radius)',
+          flexWrap: 'wrap',
+          transition: 'background 0.2s'
+        }}
+      >
+        <label
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6,
+            cursor: filtered.length > 0 ? 'pointer' : 'not-allowed',
+            color: filtered.length > 0 ? 'var(--text)' : 'var(--muted)'
+          }}
+        >
+          <input
+            type="checkbox"
+            disabled={filtered.length === 0}
+            checked={allVisibleSelected}
+            ref={(el) => {
+              if (el) el.indeterminate = !allVisibleSelected && someVisibleSelected
+            }}
+            onChange={toggleSelectAllVisible}
+          />
+          <span className="small">
+            {allVisibleSelected
+              ? `已全选 ${visibleIds.length} 条`
+              : someVisibleSelected
+                ? '部分已选'
+                : '全选当前筛选'}
+          </span>
+        </label>
+
+        <span className="muted small" style={{ marginLeft: 'auto' }}>
+          {selectedIds.size > 0
+            ? `已选中 ${selectedIds.size} 条`
+            : '提示: 勾选评论后可批量删除'}
+        </span>
+
+        <button
+          type="button"
+          className="btn btn-sm btn-danger"
+          disabled={selectedIds.size === 0}
+          onClick={onBatchDelete}
+        >
+          <TrashIcon size={14} /> 批量删除{selectedIds.size > 0 ? ` (${selectedIds.size})` : ''}
+        </button>
+        {selectedIds.size > 0 && (
+          <button
+            type="button"
+            className="btn btn-sm"
+            onClick={clearSelection}
+          >
+            <XIcon size={12} /> 取消选择
+          </button>
+        )}
+      </div>
+
       {filtered.length === 0 ? (
         <div className="empty-state">
           <p>暂无评论。</p>
@@ -162,13 +347,27 @@ export default function Comments({ navigate }) {
         <div className="post-list" style={{ gap: 12 }}>
           {filtered.map((comment) => {
             const post = DataStore.Posts.getById(comment.postId)
+            const isSelected = selectedIds.has(comment.id)
             return (
-              <div key={comment.id} style={cardStyle}>
+              <div
+                key={comment.id}
+                style={{
+                  ...cardStyle,
+                  borderColor: isSelected ? 'var(--primary)' : 'var(--border)',
+                  background: isSelected ? 'var(--primary-soft)' : 'var(--surface)'
+                }}
+              >
                 <div
                   className="post-card-top"
                   style={{ marginBottom: 10, justifyContent: 'space-between' }}
                 >
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => toggleSelect(comment.id)}
+                      aria-label={`选择评论 ${comment.id}`}
+                    />
                     <strong>{comment.author || '匿名访客'}</strong>
                     {comment.email && (
                       <span className="muted small">{comment.email}</span>

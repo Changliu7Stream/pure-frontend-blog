@@ -27,7 +27,21 @@ const EMPTY_FORM = {
   heroEnabled: true,
   commentEnabled: false,
   commentNeedReview: false,
+  commentBlacklist: [],
   themeColors: { primary: '#3B82F6', accent: '#6366F1' }
+}
+
+// 把 textarea 内容解析为屏蔽词数组: 一行一个, 去空 + 去重
+function parseBlacklist(text) {
+  if (!text) return []
+  return Array.from(
+    new Set(
+      text
+        .split(/\r?\n/)
+        .map((w) => w.trim())
+        .filter(Boolean)
+    )
+  )
 }
 
 // logo 图片最大允许宽度 (超过则压缩到该宽度,节省 localStorage 空间)
@@ -76,9 +90,15 @@ export default function Settings({ navigate }) {
   const logoInputRef = useRef(null)
   const [logoUploading, setLogoUploading] = useState(false)
 
+  // 关键词屏蔽 (编辑区: textarea 一行一个,保存时提交到 settings)
+  const [blacklistText, setBlacklistText] = useState('')
+  const [blacklistError, setBlacklistError] = useState('')
+
   useEffect(() => {
     const data = DataStore.Settings.get()
     setForm({ ...EMPTY_FORM, ...data })
+    // 同步屏蔽词到本地编辑态
+    setBlacklistText(Array.isArray(data.commentBlacklist) ? data.commentBlacklist.join('\n') : '')
     // 读取即应用当前主题色 (确保一致性)
     if (data.themeColors) applyThemeColors(data.themeColors)
   }, [applyThemeColors])
@@ -134,6 +154,9 @@ export default function Settings({ navigate }) {
         primary: form.themeColors?.primary || DEFAULT_COLORS.primary,
         accent: form.themeColors?.accent || DEFAULT_COLORS.accent
       }
+      // 解析屏蔽词 (textarea 一行一个)
+      const parsedBlacklist = parseBlacklist(blacklistText)
+      setBlacklistError('')
       const next = DataStore.Settings.update({
         blogName: (form.blogName || '').trim(),
         subtitle: (form.subtitle || '').trim(),
@@ -143,13 +166,55 @@ export default function Settings({ navigate }) {
         heroEnabled: !!form.heroEnabled,
         commentEnabled: !!form.commentEnabled,
         commentNeedReview: form.commentEnabled ? !!form.commentNeedReview : false,
+        commentBlacklist: parsedBlacklist,
         themeColors
       })
       setForm((f) => ({ ...f, ...next }))
+      setBlacklistText((next.commentBlacklist || []).join('\n'))
       applyThemeColors(next.themeColors)
       toast.success('设置已保存。')
     } catch (err) {
       toast.error('保存失败: ' + (err.message || err))
+    }
+  }
+
+  // 单独保存屏蔽词
+  const handleSaveBlacklist = () => {
+    const list = parseBlacklist(blacklistText)
+    setBlacklistError('')
+    try {
+      const next = DataStore.Settings.update({ commentBlacklist: list })
+      setForm((f) => ({ ...f, commentBlacklist: next.commentBlacklist || [] }))
+      setBlacklistText((next.commentBlacklist || []).join('\n'))
+      toast.success(`已保存 ${list.length} 个屏蔽词。`)
+    } catch (err) {
+      toast.error('保存屏蔽词失败: ' + (err.message || err))
+    }
+  }
+
+  const handleClearBlacklist = () => {
+    if (!window.confirm('确定清空全部屏蔽词?')) return
+    setBlacklistText('')
+    setBlacklistError('')
+    try {
+      const next = DataStore.Settings.update({ commentBlacklist: [] })
+      setForm((f) => ({ ...f, commentBlacklist: [] }))
+      toast.success('屏蔽词已清空。')
+    } catch (err) {
+      toast.error('清空失败: ' + (err.message || err))
+    }
+  }
+
+  // 实时校验单行长度
+  const onBlacklistChange = (e) => {
+    const text = e.target.value
+    setBlacklistText(text)
+    const lines = text.split('\n')
+    const oversize = lines.find((l) => l.trim().length > 50)
+    if (oversize) {
+      setBlacklistError('关键词长度建议 ≤ 50 字符,过长可能误伤正常评论。')
+    } else {
+      setBlacklistError('')
     }
   }
 
@@ -379,6 +444,54 @@ export default function Settings({ navigate }) {
               <span>评论需要审核后才显示</span>
             </label>
           )}
+        </section>
+
+        {/* ============ 关键词屏蔽管理卡片 ============ */}
+        <section className="settings-card">
+          <h3 className="settings-card-title">关键词屏蔽 (评论审核)</h3>
+          <p className="muted small" style={{ marginTop: 0 }}>
+            设置后,访客提交的评论若<strong>内容或昵称</strong>包含下列任一关键词 (大小写不敏感),
+            将直接被拦截且不会写入数据库。建议每行一个词,长度不超过 50 字符。
+          </p>
+
+          <textarea
+            className="input"
+            rows={6}
+            value={blacklistText}
+            onChange={onBlacklistChange}
+            placeholder={'一行一个关键词,例如:\n广告\n代刷\nhttp\n联系微信'}
+            style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: 13 }}
+          />
+
+          <div className="muted small" style={{ marginTop: 6, display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+            <span>
+              当前共{' '}
+              <strong style={{ color: 'var(--text)' }}>
+                {parseBlacklist(blacklistText).length}
+              </strong>{' '}
+              个关键词
+            </span>
+            <span>·</span>
+            <span>已保存: {(form.commentBlacklist || []).length} 个</span>
+          </div>
+
+          {blacklistError && (
+            <div className="alert alert-warn" style={{ marginTop: 10 }}>{blacklistError}</div>
+          )}
+
+          <div className="btn-row" style={{ marginTop: 12 }}>
+            <button type="button" className="btn btn-primary" onClick={handleSaveBlacklist}>
+              <SaveIcon size={14} /> 保存屏蔽词
+            </button>
+            <button
+              type="button"
+              className="btn btn-danger"
+              onClick={handleClearBlacklist}
+              disabled={parseBlacklist(blacklistText).length === 0}
+            >
+              <TrashIcon size={14} /> 清空全部
+            </button>
+          </div>
         </section>
 
         {/* ============ 首页展示卡片 ============ */}

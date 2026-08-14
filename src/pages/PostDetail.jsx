@@ -108,7 +108,13 @@ export default function PostDetail({ slug, navigate, authed }) {
         content: commentContent.trim()
       })
     } catch (err) {
-      toast.error('评论提交失败: ' + (err.message || err))
+      // 屏蔽词拦截时,给出明确提示 (不暴露具体命中哪个词,防止绕过)
+      const msg = (err && err.message) || '提交失败'
+      if (msg.includes('敏感词')) {
+        toast.error('评论包含敏感词,已被拦截。请修改后再试。')
+      } else {
+        toast.error('评论提交失败: ' + msg)
+      }
       return
     }
     setCommentContent('')

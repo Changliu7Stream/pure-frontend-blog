@@ -352,6 +352,17 @@ const Pages = {
 }
 
 // ==================== 评论 (Comments) ====================
+// 检查文本是否命中屏蔽词 (大小写不敏感)
+function checkBlacklistHit(text, blacklist) {
+  if (!blacklist || blacklist.length === 0) return null
+  const lower = String(text || '').toLowerCase()
+  for (const kw of blacklist) {
+    const w = String(kw || '').trim().toLowerCase()
+    if (w && lower.includes(w)) return kw
+  }
+  return null
+}
+
 const Comments = {
   getAll() {
     return readJSON(KEYS.COMMENTS, []).sort((a, b) => b.createdAt - a.createdAt)
@@ -367,16 +378,32 @@ const Comments = {
     return this.getAll().filter((c) => c.status === 'pending')
   },
 
+  /**
+   * 创建评论. 若内容或昵称命中关键词屏蔽列表, 抛出错误且不写入.
+   */
   create(data) {
     const all = readJSON(KEYS.COMMENTS, [])
     const settings = Settings.get()
+    const author = (data.author || '匿名访客').trim().slice(0, 50)
+    const content = (data.content || '').trim().slice(0, 2000)
+
+    // 屏蔽词校验 (作者昵称 + 内容一起检查)
+    const blacklist = Array.isArray(settings.commentBlacklist) ? settings.commentBlacklist : []
+    if (blacklist.length > 0) {
+      const hitInContent = checkBlacklistHit(content, blacklist)
+      const hitInAuthor = checkBlacklistHit(author, blacklist)
+      if (hitInContent || hitInAuthor) {
+        throw new Error('评论包含敏感词,已被拦截')
+      }
+    }
+
     const autoApprove = !settings.commentNeedReview
     const comment = {
       id: generateId(),
       postId: Number(data.postId),
-      author: (data.author || '匿名访客').trim().slice(0, 50),
+      author,
       email: (data.email || '').trim().slice(0, 100),
-      content: (data.content || '').trim().slice(0, 2000),
+      content,
       status: autoApprove ? 'approved' : 'pending',
       reply: null,
       replyAt: null,
@@ -412,6 +439,20 @@ const Comments = {
   delete(id) {
     const all = readJSON(KEYS.COMMENTS, [])
     writeJSON(KEYS.COMMENTS, all.filter((c) => c.id !== Number(id)))
+  },
+
+  /**
+   * 批量删除评论
+   * @returns {{ deleted: number, missing: number }}
+   */
+  batchDelete(ids) {
+    if (!Array.isArray(ids) || ids.length === 0) return { deleted: 0, missing: 0 }
+    const idSet = new Set(ids.map((n) => Number(n)).filter((n) => Number.isFinite(n)))
+    if (idSet.size === 0) return { deleted: 0, missing: 0 }
+    const all = readJSON(KEYS.COMMENTS, [])
+    const remaining = all.filter((c) => !idSet.has(c.id))
+    writeJSON(KEYS.COMMENTS, remaining)
+    return { deleted: all.length - remaining.length, missing: idSet.size - (all.length - remaining.length) }
   },
 
   getCounts() {
@@ -599,7 +640,7 @@ const Tags = {
 const Settings = {
   get() {
     const stored = readJSON(KEYS.SETTINGS, {}) || {}
-    return {
+    const merged = {
       ...DEFAULT_SETTINGS,
       ...stored,
       themeColors: {
@@ -607,11 +648,20 @@ const Settings = {
         ...(stored.themeColors || {})
       }
     }
+    // commentBlacklist 兜底为数组 (兼容老数据)
+    if (!Array.isArray(merged.commentBlacklist)) merged.commentBlacklist = []
+    return merged
   },
 
   update(patch) {
     const current = this.get()
     const next = { ...current, ...patch }
+    // 规范化屏蔽词: 去重 + 去空白 + 过滤空字符串
+    if (patch && Object.prototype.hasOwnProperty.call(patch, 'commentBlacklist')) {
+      next.commentBlacklist = Array.isArray(patch.commentBlacklist)
+        ? Array.from(new Set(patch.commentBlacklist.map((w) => String(w || '').trim()).filter(Boolean)))
+        : []
+    }
     writeJSON(KEYS.SETTINGS, next)
     return next
   },
