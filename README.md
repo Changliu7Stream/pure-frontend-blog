@@ -199,3 +199,97 @@ A: 编辑 [src/styles.css](./src/styles.css) 顶部 `:root` 下的 CSS 变量（
 **MIT License** © Meng1Qinghai (Changliu7Stream)
 
 详见 [LICENSE](./LICENSE) 文件。
+
+---
+
+## 💾 备份与恢复
+
+管理后台 (`#/admin/backup`) 提供三种备份方式：
+
+| 方式 | 说明 |
+|---|---|
+| **本地文件** | 导出 / 导入 JSON 备份文件,完全离线 |
+| **WebDAV** | 备份到任意支持 WebDAV 协议的网盘(如坚果云、Nextcloud) |
+| **对象云存储** | 备份到任意 S3 兼容存储(阿里云 OSS、腾讯云 COS、Cloudflare R2、MinIO 等) |
+
+### 📦 本地备份
+
+1. 进入 `管理后台 → 备份恢复`
+2. 点击 **导出本地** → 下载 `blog-backup-YYYYMMDD.json` 到本地
+3. 恢复时点击 **选择文件** → 输入 `confirm` → 确认恢复
+
+### 🌐 WebDAV 备份
+
+支持任何兼容 WebDAV 协议的网盘,以坚果云为例:
+
+1. 注册坚果云并开启 **应用密码** (在账户安全里生成)
+2. 在备份恢复页面填写:
+   - **服务器地址**: `https://dav.jianguoyun.com/dav/`
+   - **用户名**: 坚果云账号
+   - **密码**: 应用密码(非登录密码)
+3. 点击 **测试连接** → **保存配置**
+4. 点击 **立即备份** 上传当前数据
+
+> 💡 备份文件名形如 `blog-2026-08-14T12-30-45.json`
+
+### ☁️ 对象云存储备份 (S3 兼容)
+
+兼容任何支持 S3 V4 签名协议的存储服务。
+
+#### 阿里云 OSS
+
+1. 阿里云控制台 → **对象存储 OSS** → 创建 Bucket(建议开启 **私有读写**)
+2. 访问控制 → RAM → 创建用户,授权 `AliyunOSSFullAccess`(或更细粒度的 `oss:PutObject/GetObject/ListObjects/DeleteObject`)
+3. 在备份恢复页面填写:
+   - **Endpoint**: `https://oss-cn-hangzhou.aliyuncs.com`(替换为你的 Bucket 区域)
+   - **Region**: `oss-cn-hangzhou`(替换为你的 Bucket 区域,必须与 Endpoint 区域一致)
+   - **Bucket**: 你的 Bucket 名称
+   - **AccessKeyId / SecretAccessKey**: 上一步 RAM 用户的密钥
+   - **PathPrefix**: `blog-backups`(可自定义,留空则放到 Bucket 根目录)
+4. **测试连接** → **保存配置** → **立即备份到对象云存储**
+
+> ⚠️ Region 必须与 Endpoint 中的一致,否则签名校验失败
+
+#### 腾讯云 COS
+
+1. COS 控制台 → 创建存储桶
+2. 访问管理 CAM → 创建子用户,授权 `QcloudCOSFullAccess`(或更细粒度)
+3. 填写:
+   - **Endpoint**: `https://cos.<Region>.myqcloud.com` (例 `https://cos.ap-guangzhou.myqcloud.com`)
+   - **Region**: 例 `ap-guangzhou`
+   - **Bucket**: 存储桶名称(格式 `<name>-<appid>`)
+   - **AccessKeyId / SecretAccessKey**: 子用户的 SecretId / SecretKey
+
+#### Cloudflare R2
+
+1. Cloudflare Dashboard → R2 → 创建 Bucket
+2. R2 → **Manage R2 API Tokens** → 创建 API Token(授予 Object Read & Write)
+3. 填写:
+   - **Endpoint**: `https://<ACCOUNT_ID>.r2.cloudflarestorage.com`
+   - **Region**: `auto`(R2 自动)
+   - **Bucket**: 你的 Bucket 名
+   - **AccessKeyId / SecretAccessKey**: 创建的 R2 Token
+
+#### MinIO (自建)
+
+1. 部署 MinIO 后,创建 Bucket
+2. 创建 Access Key
+3. 填写:
+   - **Endpoint**: `https://your-minio.example.com`(或内网地址)
+   - **Region**: 任意非空字符串(如 `us-east-1`)
+   - **Bucket**: Bucket 名
+   - **AccessKeyId / SecretAccessKey**: MinIO 用户的密钥
+
+### 🛡️ 安全提示
+
+- 所有密钥通过浏览器的 `localStorage` 加密存储(简单混淆,**非专业加密**)
+- 建议为备份存储创建**专用最小权限**的子账号,不要用主账号密钥
+- 备份文件**未加密**,包含全部博客数据;若包含敏感内容,建议先压缩加密再上传
+
+### 🔄 恢复流程
+
+任何来源(本地/WebDAV/S3)的备份文件都可以互相恢复:
+1. 选择 **本地文件** 恢复 → 选择 JSON 文件 → 输入 `confirm` → 确认
+2. 或在 **云端备份文件列表** 中点 **恢复** → 输入 `confirm` → 确认
+
+> ⚠️ 恢复操作会**完全覆盖**当前所有数据,不可撤销。建议恢复前先做一次当前数据的本地导出
