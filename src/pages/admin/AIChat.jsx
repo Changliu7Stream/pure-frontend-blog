@@ -394,6 +394,3 @@ export default function AIChat({ navigate }) {
     </div>
   )
 }
-
-// 需要补充的图标 import
-import { MessageIcon, SearchIcon, SendIcon } from '../../icons.jsx'
