@@ -25,7 +25,25 @@ jobs:
           node-version: 20
           cache: npm
 
-      - run: npm install --no-audit --no-fund
+      - name: Diagnose environment
+        run: |
+          node --version
+          npm --version
+          echo "registry=$(npm config get registry)"
+          ls -la package.json package-lock.json 2>/dev/null || true
+
+      - name: Clean legacy lock (avoid npm ci mismatch)
+        run: rm -f package-lock.json
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+        env:
+          CI: true
+
+      - name: Verify installation
+        run: |
+          ls -la node_modules/.bin/vite
+          test -f package-lock.json && echo "lock_generated=true" || echo "lock_generated=false"
 
       - name: Build
         run: npm run build
