@@ -650,6 +650,148 @@ export default function Backup({ navigate }) {
                 {backing ? '备份中…' : '立即备份'}
               </button>
             </div>
+            {/* ==================== 对象云存储配置 ==================== */}
+            <div className="settings-card" style={{marginTop: '16px', textAlign: 'left'}}>
+              <h3 className="settings-card-title">☁️ 对象云存储备份 (S3 兼容)</h3>
+              <p className="muted small" style={{marginTop: 0}}>
+                支持阿里云 OSS、腾讯云 COS、Cloudflare R2、MinIO 等任意 S3 兼容存储
+              </p>
+
+              <label className="form-label">
+                服务商
+                <select className="input" value={s3Provider} onChange={(e) => setS3Provider(e.target.value)}>
+                  <option value="">-- 选择服务商 --</option>
+                  <option value="aliyun">阿里云 OSS</option>
+                  <option value="tencent">腾讯云 COS</option>
+                  <option value="cloudflare">Cloudflare R2</option>
+                  <option value="minio">MinIO 自建</option>
+                  <option value="other">其他 S3 兼容</option>
+                </select>
+              </label>
+
+              <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px'}}>
+                <label className="form-label">
+                  Endpoint
+                  <input className="input" type="text" value={s3Endpoint}
+                    onChange={(e) => { setS3Endpoint(e.target.value); setS3ConfigSaved(false) }}
+                    placeholder="https://oss-cn-hangzhou.aliyuncs.com" />
+                </label>
+                <label className="form-label">
+                  Region
+                  <input className="input" type="text" value={s3Region}
+                    onChange={(e) => { setS3Region(e.target.value); setS3ConfigSaved(false) }}
+                    placeholder="oss-cn-hangzhou" />
+                </label>
+              </div>
+
+              <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px'}}>
+                <label className="form-label">
+                  Bucket 名称
+                  <input className="input" type="text" value={s3Bucket}
+                    onChange={(e) => { setS3Bucket(e.target.value); setS3ConfigSaved(false) }}
+                    placeholder="my-blog-backups" />
+                </label>
+                <label className="form-label">
+                  路径前缀
+                  <input className="input" type="text" value={s3PathPrefix}
+                    onChange={(e) => { setS3PathPrefix(e.target.value); setS3ConfigSaved(false) }}
+                    placeholder="blog-backups" />
+                </label>
+              </div>
+
+              <label className="form-label">
+                Access Key ID
+                <input className="input" type="text" value={s3AccessKeyId}
+                  onChange={(e) => { setS3AccessKeyId(e.target.value); setS3ConfigSaved(false) }}
+                  placeholder="LTAI5xxxxxxxx" />
+              </label>
+
+              <label className="form-label">
+                Secret Access Key
+                <div className="password-row">
+                  <input className="input" type={s3ShowSecret ? 'text' : 'password'} value={s3SecretAccessKey}
+                    onChange={(e) => { setS3SecretAccessKey(e.target.value); setS3ConfigSaved(false) }}
+                    placeholder="xxxxxxxx" />
+                  <button className="btn btn-sm" type="button"
+                    onClick={() => setS3ShowSecret(!s3ShowSecret)}>
+                    {s3ShowSecret ? '隐藏' : '显示'}
+                  </button>
+                </div>
+              </label>
+
+              <div className="btn-row" style={{marginTop: '12px'}}>
+                <button className="btn" onClick={onTestS3} disabled={testingS3}>
+                  {testingS3 ? '测试中…' : '测试连接'}
+                </button>
+                <button className="btn btn-primary" onClick={onSaveS3Config}
+                  disabled={!s3Endpoint || !s3Bucket || !s3AccessKeyId}>
+                  <CheckIcon size={15} /> 保存配置
+                </button>
+                {s3ConfigSaved && (
+                  <button className="btn btn-danger" onClick={onClearS3Config}>清除配置</button>
+                )}
+              </div>
+
+              {s3ConfigSaved && (
+                <p className="muted small" style={{marginTop: '8px'}}>
+                  配置已保存，密码已加密存储。下次刷新无需重新输入。
+                </p>
+              )}
+
+              {s3ConfigSaved && (
+                <div style={{marginTop: '16px', borderTop: '1px solid var(--border)', paddingTop: '16px'}}>
+                  <div className="manual-action">
+                    <div className="manual-action-info">
+                      <strong>备份到对象云存储</strong>
+                      <p className="muted small">将数据上传到 S3 兼容存储</p>
+                    </div>
+                    <button className="btn btn-primary" onClick={onBackupToS3}
+                      disabled={backingS3}>
+                      {backingS3 ? '备份中…' : '立即备份到云存储'}
+                    </button>
+                  </div>
+
+                  <div style={{marginTop: '12px'}}>
+                    <button className="btn btn-sm" onClick={loadS3Files} disabled={loadingS3}>
+                      <RefreshIcon size={14} /> 刷新文件列表
+                    </button>
+                  </div>
+
+                  {loadingS3 && <p className="muted small" style={{marginTop: '8px'}}>加载中…</p>}
+
+                  {!loadingS3 && cloudFilesS3.length > 0 && (
+                    <div className="table-wrap" style={{marginTop: '12px'}}>
+                      <table className="admin-table">
+                        <thead>
+                          <tr><th>文件名</th><th>大小</th><th>修改时间</th><th>操作</th></tr>
+                        </thead>
+                        <tbody>
+                          {cloudFilesS3.map((file) => (
+                            <tr key={file.filename}>
+                              <td className="cell-title">{file.filename}</td>
+                              <td>{formatFileSize(file.size)}</td>
+                              <td>{formatS3Date(file.lastModified)}</td>
+                              <td className="col-actions">
+                                <button className="btn btn-sm btn-primary"
+                                  onClick={() => onS3FileRestoreClick(file.filename)}>恢复</button>
+                                <button className="btn btn-sm btn-danger"
+                                  onClick={() => onS3FileDeleteClick(file.filename)}>删除</button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+
+                  {!loadingS3 && cloudFilesS3.length === 0 && s3ConfigSaved && (
+                    <p className="muted small" style={{marginTop: '12px'}}>
+                      暂无云存储备份文件。点击"立即备份到云存储"开始备份。
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
 
             <div className="manual-action">
               <div className="manual-action-info">
