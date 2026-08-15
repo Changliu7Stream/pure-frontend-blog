@@ -75,6 +75,50 @@ export default function AdminLayout({ children, navigate, currentPath }) {
               </button>
             )
           })}
+          {/* 实验室功能开关 */}
+          <div className="admin-lab-toggle" style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '12px 16px',
+            marginTop: '8px',
+            borderTop: '1px solid var(--border)'
+          }}>
+            <span style={{ fontSize: 13, color: 'var(--muted)', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <SparklesIcon size={14} />
+              实验室功能
+            </span>
+            <button
+              onClick={() => {
+                const newVal = !labEnabled
+                DataStore.Settings.update({ labEnabled: newVal })
+                window.location.reload()
+              }}
+              style={{
+                width: 44,
+                height: 24,
+                borderRadius: 12,
+                border: 'none',
+                background: labEnabled ? '#10B981' : '#d1d5db',
+                cursor: 'pointer',
+                position: 'relative',
+                transition: 'background 0.3s',
+                padding: 0
+              }}
+            >
+              <span style={{
+                width: 20,
+                height: 20,
+                borderRadius: '50%',
+                background: 'white',
+                position: 'absolute',
+                top: 2,
+                left: labEnabled ? 22 : 2,
+                transition: 'left 0.3s',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
+              }} />
+            </button>
+          </div>
           {labEnabled && (
             <button
               className={`admin-nav-item ${currentPath.startsWith('/admin/ai') ? 'active' : ''}`}
