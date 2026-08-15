@@ -16,10 +16,6 @@ import {
  putObject, getObject, listObjects, deleteObject,
  generateCloudFilename, formatS3Date
 } from '../../objectStorage.js'
-import {
- saveS3Config, getS3Config, clearS3Config, hasS3Config,
- putObject, getObject, listObjects, deleteObject,
- generateCloudFilename, formatS3Date
 
 function formatTime(ts) {
   if (!ts) return '—'
