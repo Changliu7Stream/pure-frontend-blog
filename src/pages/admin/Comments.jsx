@@ -327,12 +327,7 @@ export default function Comments({ navigate }) {
               rows={6}
               value={blacklistText}
               onChange={onBlacklistChange}
-              placeholder={'一行一个关键词，例如:
-广告
-代刷
-http
-联系微信
-抽奖'}
+              placeholder={'一行一个关键词，例如:\n广告\n代刷\nhttp\n联系微信\n抽奖'}
               style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: 13 }}
             />
 
