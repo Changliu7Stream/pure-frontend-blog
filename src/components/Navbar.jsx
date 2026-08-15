@@ -4,7 +4,7 @@ import { useTheme, THEMES } from '../theme.jsx'
 import { DataStore } from '../datastore.js'
 import {
   HomeIcon, ArchiveIcon, SunIcon, MoonIcon, LogoutIcon, LoginIcon,
-  MenuIcon, XIcon, LayersIcon, SearchIcon, ChevronDownIcon
+  MenuIcon, XIcon, LayersIcon, SearchIcon, ChevronDownIcon, SparklesIcon
 } from '../icons.jsx'
 
 function searchPosts(posts, keyword, limit = 5) {
@@ -281,6 +281,7 @@ export default function Navbar({ siteTitle, authed, navigate, currentPath }) {
           {authed ? (
             <>
               {navLink('/admin', '管理后台', null, true)}
+              {settings.labEnabled && navLink('/admin/ai', 'AI 助手', <SparklesIcon size={16} />)}
               <button className="nav-link nav-btn" onClick={onLogout}>
                 <LogoutIcon size={16} />
                 <span>登出</span>

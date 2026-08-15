@@ -652,7 +652,7 @@ export default function Backup({ navigate }) {
             </div>
             {/* ==================== 对象云存储配置 ==================== */}
             <div className="settings-card" style={{marginTop: '16px', textAlign: 'left'}}>
-              <h3 className="settings-card-title">☁️ 对象云存储备份 (S3 兼容)</h3>
+              <h3 className="settings-card-title"><CloudIcon size={18} /> 对象云存储备份 (S3 兼容)</h3>
               <p className="muted small" style={{marginTop: 0}}>
                 支持阿里云 OSS、腾讯云 COS、Cloudflare R2、MinIO 等任意 S3 兼容存储
               </p>

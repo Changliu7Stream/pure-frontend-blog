@@ -4,6 +4,7 @@ import { useDocumentMeta } from '../../useDocumentMeta.js'
 import { useTheme } from '../../theme.jsx'
 import { useToast } from '../../components/Toast.jsx'
 import { SaveIcon, CheckIcon, TrashIcon, UploadIcon, PaintIcon, ImageIcon } from '../../icons.jsx'
+import ToggleSwitch from '../../components/ToggleSwitch.jsx'
 
 const THEME_PRESETS = [
   { name: '星空蓝', primary: '#3B82F6', accent: '#6366F1' },
@@ -27,6 +28,7 @@ const EMPTY_FORM = {
   heroEnabled: true,
   commentEnabled: false,
   commentNeedReview: false,
+  labEnabled: false,  // 实验室功能开关
   themeColors: { primary: '#3B82F6', accent: '#6366F1' }
 }
 
@@ -143,6 +145,7 @@ export default function Settings({ navigate }) {
         heroEnabled: !!form.heroEnabled,
         commentEnabled: !!form.commentEnabled,
         commentNeedReview: form.commentEnabled ? !!form.commentNeedReview : false,
+        labEnabled: !!form.labEnabled,
         themeColors
       })
       setForm((f) => ({ ...f, ...next }))
@@ -397,6 +400,21 @@ export default function Settings({ navigate }) {
               关闭后首页将直接显示分类、标签和文章列表。
             </p>
           )}
+        </section>
+
+        {/* ============ 实验室功能卡片 ============ */}
+        <section className="settings-card">
+          <h3 className="settings-card-title">实验室功能</h3>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div>
+              <p className="muted" style={{ margin: 0, fontWeight: 500 }}>启用实验室功能</p>
+              <p className="muted small" style={{ margin: '4px 0 0' }}>开启后将显示 AI 助手入口及相关实验性功能</p>
+            </div>
+            <ToggleSwitch
+              checked={!!form.labEnabled}
+              onChange={(val) => update('labEnabled', val)}
+            />
+          </div>
         </section>
 
         <div className="settings-actions">

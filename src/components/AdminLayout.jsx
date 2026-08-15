@@ -3,7 +3,8 @@ import { getAdminUsername, logout } from '../auth.js'
 import { DataStore } from '../datastore.js'
 import {
   DashboardIcon, FileTextIcon, FolderIcon, TagIcon, LayersIcon,
-  MessageIcon, DownloadIcon, SettingsIcon, LogoutIcon, MenuIcon, XIcon
+  MessageIcon, DownloadIcon, SettingsIcon, LogoutIcon, MenuIcon, XIcon,
+  SparklesIcon, BrainIcon
 } from '../icons.jsx'
 
 const NAV_ITEMS = [
@@ -22,6 +23,8 @@ export default function AdminLayout({ children, navigate, currentPath }) {
   const username = getAdminUsername()
   const commentCounts = DataStore.Comments.getCounts()
   const pendingCount = commentCounts.pending
+  const settings = DataStore.Settings.get()
+  const labEnabled = settings.labEnabled || false
 
   const onLogout = () => {
     logout()
@@ -72,6 +75,16 @@ export default function AdminLayout({ children, navigate, currentPath }) {
               </button>
             )
           })}
+          {labEnabled && (
+            <button
+              className={`admin-nav-item ${currentPath.startsWith('/admin/ai') ? 'active' : ''}`}
+              onClick={() => handleNav('/admin/ai')}
+              style={{ marginTop: 8, borderTop: '1px solid var(--border)', paddingTop: 12 }}
+            >
+              <SparklesIcon size={17} />
+              <span>AI 助手</span>
+            </button>
+          )}
         </nav>
         <div className="admin-sidebar-foot">
           <button className="btn btn-sm btn-block" onClick={() => navigate('/')}>

@@ -21,6 +21,8 @@ import Pages from './pages/admin/Pages.jsx'
 import Comments from './pages/admin/Comments.jsx'
 import Backup from './pages/admin/Backup.jsx'
 import Settings from './pages/admin/Settings.jsx'
+import AIChat from './pages/admin/AIChat.jsx'
+import AIConfig from './pages/admin/AIConfig.jsx'
 
 function InnerApp() {
   const { route, navigate } = useHashRoute()
@@ -61,7 +63,7 @@ function InnerApp() {
     }
 
     // ---- 受保护的管理后台页面 ----
-    const adminPaths = ['/admin', '/admin/posts', '/admin/categories', '/admin/tags', '/admin/pages', '/admin/comments', '/admin/backup', '/admin/settings', '/admin/new', '/admin/edit', '/admin/pages/new', '/admin/pages/edit']
+    const adminPaths = ['/admin', '/admin/posts', '/admin/categories', '/admin/tags', '/admin/pages', '/admin/comments', '/admin/backup', '/admin/settings', '/admin/ai', '/admin/ai-config', '/admin/new', '/admin/edit', '/admin/pages/new', '/admin/pages/edit']
     const isAdminPath = adminPaths.some((p) => path === p || path.startsWith(p + '/'))
 
     if (isAdminPath) {
@@ -93,6 +95,10 @@ function InnerApp() {
         adminContent = <Backup navigate={navigate} />
       } else if (path === '/admin/settings' || path === '/admin/settings/') {
         adminContent = <Settings navigate={navigate} />
+      } else if (path === '/admin/ai' || path === '/admin/ai/') {
+        adminContent = <AIChat navigate={navigate} />
+      } else if (path === '/admin/ai-config' || path === '/admin/ai-config/') {
+        adminContent = <AIConfig navigate={navigate} />
       } else {
         adminContent = <NotFound navigate={navigate} />
       }
