@@ -59,11 +59,9 @@ jobs:
           if-no-files-found: ignore
 
       - name: Add SPA 404 fallback
-        if: success()
         run: cp dist/index.html dist/404.html
 
       - uses: actions/upload-pages-artifact@v3
-        if: success()
         with:
           path: dist
 
