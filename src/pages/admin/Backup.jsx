@@ -20,15 +20,6 @@ import {
  saveS3Config, getS3Config, clearS3Config, hasS3Config,
  putObject, getObject, listObjects, deleteObject,
  generateCloudFilename, formatS3Date
-} from '../../objectStorage.js'
-
-function pad2(n) {
-  return String(n).padStart(2, '0')
-}
-
-function ymd(date) {
-  return `${date.getFullYear()}${pad2(date.getMonth() + 1)}${pad2(date.getDate())}`
-}
 
 function formatTime(ts) {
   if (!ts) return '—'
