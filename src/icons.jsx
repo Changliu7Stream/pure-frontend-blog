@@ -329,6 +329,13 @@ export const RobotIcon = makeIcon(
   </>
 )
 
+export const SendIcon = makeIcon(
+  <>
+    <line x1="22" y1="2" x2="11" y2="13" />
+    <polygon points="22 2 15 22 11 13 2 9 22 2" />
+  </>
+)
+
 export const SparklesIcon = makeIcon(
   <>
     <path d="M12 3l1.912 5.813a2 2 0 0 0 1.275 1.275L21 12l-5.813 1.912a2 2 0 0 0-1.275 1.275L12 21l-1.912-5.813a2 2 0 0 0-1.275-1.275L3 12l5.813-1.912a2 2 0 0 0 1.275-1.275L12 3z" />
@@ -388,7 +395,8 @@ const ICON_MAP = {
   server: ServerIcon,
   robot: RobotIcon,
   sparkles: SparklesIcon,
-  brain: BrainIcon
+  brain: BrainIcon,
+  send: SendIcon
 }
 
 export function Icon({ name, ...rest }) {
