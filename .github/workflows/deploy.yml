@@ -37,16 +37,24 @@ jobs:
         env:
           CI: true
 
-      - name: Build (verbose)
+      - name: Build with full log capture
+        id: build
         run: |
           set -x
-          npm run build 2>&1 | tee /tmp/build.log
-          echo "EXIT=$?"
-          echo "---tail of log---"
-          tail -100 /tmp/build.log
+          npm run build > /tmp/build.log 2>&1
+          echo "EXIT=$?" | tee -a /tmp/build.log
+          tail -80 /tmp/build.log
         env:
           CI: true
           VITE_ADMIN_PASSWORD: ${{ secrets.VITE_ADMIN_PASSWORD }}
+        continue-on-error: true
+
+      - name: Upload build log on failure
+        if: steps.build.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log
+          path: /tmp/build.log
 
       - name: Add SPA 404 fallback
         run: cp dist/index.html dist/404.html
