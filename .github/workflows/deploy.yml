@@ -22,8 +22,9 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 18
           cache: npm
+          registry-url: 'https://registry.npmjs.org'
 
       - name: Diagnose environment
         run: |
@@ -32,7 +33,7 @@ jobs:
           echo "registry=$(npm config get registry)"
           ls -la package.json package-lock.json 2>/dev/null || true
 
-      - name: Clean legacy lock (avoid npm ci mismatch)
+      - name: Clean legacy lock
         run: rm -f package-lock.json
 
       - name: Install dependencies
