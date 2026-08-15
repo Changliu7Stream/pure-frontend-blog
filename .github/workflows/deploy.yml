@@ -28,8 +28,6 @@ jobs:
         run: |
           node --version
           npm --version
-          echo "registry=$(npm config get registry)"
-          ls -la package.json package-lock.json 2>/dev/null || true
 
       - name: Clean legacy lock
         run: rm -f package-lock.json
@@ -39,13 +37,13 @@ jobs:
         env:
           CI: true
 
-      - name: Verify installation
+      - name: Build (verbose)
         run: |
-          ls -la node_modules/.bin/vite
-          test -f package-lock.json && echo "lock_generated=true" || echo "lock_generated=false"
-
-      - name: Build
-        run: npm run build
+          set -x
+          npm run build 2>&1 | tee /tmp/build.log
+          echo "EXIT=$?"
+          echo "---tail of log---"
+          tail -100 /tmp/build.log
         env:
           CI: true
           VITE_ADMIN_PASSWORD: ${{ secrets.VITE_ADMIN_PASSWORD }}
