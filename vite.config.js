@@ -8,7 +8,7 @@ const isGHPages = process.env.GITHUB_ACTIONS === 'true' || process.env.CI === 't
 // https://vitejs.dev/config/
 export default defineConfig({
   // GitHub Pages 部署在子路径下,需要设置正确的 base
-  base: isGHPages ? '/pure-frontend-blog/' : '/',
+  base: '/',
   plugins: [react()],
   server: {
     port: 5173,
