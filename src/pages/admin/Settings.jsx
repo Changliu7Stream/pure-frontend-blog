@@ -28,7 +28,6 @@ const EMPTY_FORM = {
   heroEnabled: true,
   commentEnabled: false,
   commentNeedReview: false,
-  labEnabled: false,  // 实验室功能开关
   themeColors: { primary: '#3B82F6', accent: '#6366F1' }
 }
 
@@ -145,7 +144,6 @@ export default function Settings({ navigate }) {
         heroEnabled: !!form.heroEnabled,
         commentEnabled: !!form.commentEnabled,
         commentNeedReview: form.commentEnabled ? !!form.commentNeedReview : false,
-        labEnabled: !!form.labEnabled,
         themeColors
       })
       setForm((f) => ({ ...f, ...next }))

@@ -281,7 +281,7 @@ export default function Navbar({ siteTitle, authed, navigate, currentPath }) {
           {authed ? (
             <>
               {navLink('/admin', '管理后台', null, true)}
-              {settings.labEnabled && navLink('/admin/ai', 'AI 助手', <SparklesIcon size={16} />)}
+              
               <button className="nav-link nav-btn" onClick={onLogout}>
                 <LogoutIcon size={16} />
                 <span>登出</span>
